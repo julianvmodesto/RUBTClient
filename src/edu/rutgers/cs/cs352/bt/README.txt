@@ -21,4 +21,4 @@ P_Communicator
 T_Parser (Codec for Tracker Communicator [Announcing to the tracker, receiving intervals and peers])
 	T_Parser uses Bencoder2 to work with messages
 P_Parser (Codec for Peer Communicator [Handshaking, verifying infohash, interested, receiving unchokes, requesting pieces]
-	P_Parser uses Bencoder2 to work with messages
+	P_Parser uses Bencoder2 to work with messages.
