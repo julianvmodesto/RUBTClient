@@ -1,6 +1,6 @@
 In Main:
 	Parse Command Line Args
-	Create TorrentFile Object (Parses torrent file)
+	Create TorrentInfo Object (Parses torrent file)
 Send an HTTP GET request to the tracker as denoted by the torrentFile object
 	Call the T_Communicator class from Main
 		Capture the response from the tracker, get the list of peers, filter by RUBT11
@@ -19,4 +19,6 @@ TorrentFile
 T_Communicator
 P_Communicator 
 T_Parser (Codec for Tracker Communicator [Announcing to the tracker, receiving intervals and peers])
-P_Parser (Codec for Peer Communicator [Handshaking, ]
+	T_Parser uses Bencoder2 to work with messages
+P_Parser (Codec for Peer Communicator [Handshaking, verifying infohash, interested, receiving unchokes, requesting pieces]
+	P_Parser uses Bencoder2 to work with messages
