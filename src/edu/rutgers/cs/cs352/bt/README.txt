@@ -15,11 +15,20 @@
 
 
 Classes
+
 Main
-TorrentFile
+	Inputs: Torrent file, save location
+	Outputs: Success or Failure, downloaded data
+TorrentInfo
+	Inputs: Torrent file byte array from file
+	Outputs: No output; TorrentInfo class leaves all data in public fields.
 T_Communicator
-P_Communicator 
-T_Parser (Codec for Tracker Communicator [Announcing to the tracker, receiving intervals and peers])
-	T_Parser uses Bencoder2 to work with messages
-P_Parser (Codec for Peer Communicator [Handshaking, verifying infohash, interested, receiving unchokes, requesting pieces]
-	P_Parser uses Bencoder2 to work with messages.
+	Methods: AnnounceToTracker, getInterval, getPeerlist
+	
+	T_Parser (Codec for T_Communicator [Announcing to the tracker, receiving intervals and peers])
+		T_Parser uses Bencoder2 to work with messages
+P_Communicator
+	Methods: Handshake, getAvailablePieces, sendInterestedInPiece, RequestPiece
+	
+	P_Parser (Codec for Peer Communicator [Handshaking, interested, receiving unchokes, requesting pieces]
+		P_Parser uses Bencoder2 to work with messages.
