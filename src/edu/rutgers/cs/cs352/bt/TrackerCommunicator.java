@@ -4,7 +4,7 @@
 package edu.rutgers.cs.cs352.bt;
 
 /**
- * @author Julian
+ * @author Gaurav
  *
  */
 public class TrackerCommunicator {
