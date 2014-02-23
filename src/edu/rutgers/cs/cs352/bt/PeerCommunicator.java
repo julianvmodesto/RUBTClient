@@ -8,7 +8,18 @@ package edu.rutgers.cs.cs352.bt;
  *
  */
 public class PeerCommunicator {
-
+	
+	private static final byte[] GROUP = {'G','P','O','1','6'};
+	
+	// Message ID
+	private static final int MSG_CHOKE = 0;
+	private static final int MSG_UNCHOKE = 1;
+	private static final int MSG_INTERESTED = 2;
+	private static final int MSG_UNINTERESTED = 3;
+	private static final int MSG_HAVE = 4;
+	private static final int MSG_REQUEST = 6;
+	private static final int MSG_PIECE = 7;
+	
 	/**
 	 * Generates the handshake from the client to the peer
 	 * 
