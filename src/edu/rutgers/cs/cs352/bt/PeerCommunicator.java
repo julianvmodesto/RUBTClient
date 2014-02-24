@@ -3,7 +3,13 @@
  */
 package edu.rutgers.cs.cs352.bt;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.logging.Logger;
@@ -14,7 +20,8 @@ import java.util.logging.Logger;
  */
 public class PeerCommunicator {
 	
-	private final static Logger LOGGER = Logger.getLogger(PeerCommunicator.class.getName());
+	private final static Logger LOGGER = 
+			Logger.getLogger(PeerCommunicator.class.getName());
 	
 	private static final byte[] GROUP = {'G','P','O','1','6'};
 	
@@ -28,7 +35,9 @@ public class PeerCommunicator {
 	private static final int MSG_PIECE = 7;
 	
 	/**
-	 * Generates the handshake from the client to the peer
+	 * Generates the handshake from the client to the peer.
+	 * 
+	 * The byte array is preallocated and then filled with System.arraycopy.
 	 * 
 	 * @author Julian Modesto
 	 * @param infohash the 20-byte SHA-1 hash of the bencoded form of the info value from the metainfo (.torrent) file
@@ -36,6 +45,7 @@ public class PeerCommunicator {
 	 * @return the handshake byte array
 	 */
 	public static byte[] getHandshake(byte[] infohash, byte[] peerID) {
+		// Preallocate bytes for handshake
 		byte[] handshake = new byte[68];
 		int position = 0;
 		
@@ -44,8 +54,9 @@ public class PeerCommunicator {
 		handshake[0] = 19;
 		
 		// Add "BitTorrent protocol"
-		byte[] protocol = {'B','i','t','T','o','r','r','e','n','t',' ','p','r','o','t','o','c','o','l'};
-		System.arraycopy(protocol, 0, handshake, 1, protocol.length);
+		final byte[] PROTOCOL = {'B','i','t','T','o','r','r','e','n','t',' ',
+				'p','r','o','t','o','c','o','l'};
+		System.arraycopy(PROTOCOL, 0, handshake, 1, PROTOCOL.length);
 		
 		// 8 reserved bytes 20-27 are already initialized to 0; skip + omit commented-out code below
 //		// Add 8 reserved bytes which are set to 0
@@ -62,9 +73,10 @@ public class PeerCommunicator {
 	}
 	
 	/**
+	 * @throws IOException 
 	 * 
 	 */
-	public static void getConnection(String address, int port) {
+	public static void getConnection(String address, int port) throws IOException {
 		
 		// Check that port number is within standard TCP range i.e. max port number is an unsigned, 16-bit short = 2^16 - 1 = 65535
 		if (port <= 0 | port >= 65535) {
@@ -85,6 +97,18 @@ public class PeerCommunicator {
 			ioe.printStackTrace();
 			return;
 		}
+		
+		// Open IO streams
+		DataInputStream dataIn = new DataInputStream(socket.getInputStream());
+		DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
+				
+		// Close IO streams
+		dataIn.close();
+		dataOut.flush();
+		dataOut.close();
+		
+		// Close socket
+		socket.close();
 	}
 	
 	/**
