@@ -18,21 +18,13 @@ import java.util.logging.Logger;
  * @author Julian Modesto
  *
  */
-public class PeerCommunicator {
+public class PeerCommunicator extends Thread {
 	
 	private final static Logger LOGGER = 
 			Logger.getLogger(PeerCommunicator.class.getName());
 	
 	private static final byte[] GROUP = {'G','P','O','1','6'};
 	
-	// Message ID
-	private static final int MSG_CHOKE = 0;
-	private static final int MSG_UNCHOKE = 1;
-	private static final int MSG_INTERESTED = 2;
-	private static final int MSG_UNINTERESTED = 3;
-	private static final int MSG_HAVE = 4;
-	private static final int MSG_REQUEST = 6;
-	private static final int MSG_PIECE = 7;
 	
 	// Chocked status
 	// local client = us
@@ -46,16 +38,18 @@ public class PeerCommunicator {
 	private boolean keepRunning;
 	
 	private Socket socket;
+	private DataInputStream dataIn;
+	private DataOutputStream dataOut;
 	
 	private byte[] peerID;
-	private String ipAddress;
+	private String address;
 	private int port;
 	private byte[] infohash;
 	private byte[] myPeerID;
 	
-	public PeerCommunicator(byte[] peerID, String ipAddress, int port, byte[] infohash, byte[] myPeerID) {
+	private PeerCommunicator(byte[] peerID, String address, int port, byte[] infohash, byte[] myPeerID) {
 		this.peerID = peerID;
-		this.ipAddress = ipAddress;
+		this.address = address;
 		this.port = port;
 		this.infohash = infohash;
 		this.myPeerID = myPeerID;
@@ -99,11 +93,23 @@ public class PeerCommunicator {
 		return handshake;
 	}
 	
+	private boolean validateHandshake(byte[] myHandshake, byte[] otherHandshake) {
+		if (myHandshake == null || otherHandshake == null) {
+			
+		}
+		// check same length
+		// skip first 8 bytes
+		// check info hash
+		// check their peer ID
+		
+		return false;
+	}
+	
 	/**
 	 * @throws IOException 
 	 * 
 	 */
-	private void getConnection(String address, int port) throws IOException {
+	private void connect() throws IOException {
 		
 		// Check that port number is within standard TCP range i.e. max port number is an unsigned, 16-bit short = 2^16 - 1 = 65535
 		if (port <= 0 | port >= 65535) {
@@ -111,33 +117,66 @@ public class PeerCommunicator {
 			return;
 		}
 		
+		// Create socket
 		socket = null;
 		try {
-			socket = new Socket(address, port);
+			socket = new Socket(this.address, port);
 		} catch (UnknownHostException uhe) {
-			LOGGER.severe("Error: the IP address of the host could not be determined from " + address);
+			LOGGER.severe("Error: the IP address of the host could not be determined from " + this.address);
 			LOGGER.severe(uhe.getMessage());
 		} catch (IOException ioe) {
 			LOGGER.severe("Error: an I/O error occurred");
 			LOGGER.severe(ioe.getMessage());
 		}
-		if (socket == null) {
-			LOGGER.severe("Error: could not set up socket");
+		
+		// Check if connected once but not closed
+		if (socket == null && !socket.isClosed()) {
+			LOGGER.severe("Error: socket connected once but not closed");
 		}
 		
 		// Open IO streams
-		DataInputStream dataIn = new DataInputStream(socket.getInputStream());
-		DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
-				
-		//dataIn.readFully(b);
-		
-		// Close IO streams
-		dataIn.close();
-		dataOut.flush();
-		dataOut.close();
-		
-		// Close socket
-		socket.close();
+		dataIn = new DataInputStream(socket.getInputStream());
+		dataOut = new DataOutputStream(socket.getOutputStream());
+	}
+	
+	public void run() {
+		try {
+			connect();
+			
+			byte[] myHandshake = getHandshake();
+			dataOut.write(myHandshake);
+			dataOut.flush();
+			
+			byte[] peerHandshake = new byte[68];
+			dataIn.readFully(peerHandshake);
+			
+			// Main loop
+			while (this.keepRunning) {
+				// read message from socket
+				PeerMessage message = PeerMessage.read(this.dataIn);
+				if (message == null) {
+					//error
+				}
+				//switch(msg.getType())
+				//inspect bitfield
+				//receive message, update internal state i.e. MESSAGE_CHOKEd => (?) localChoked = true;
+				// pass message to client
+				//send interest message, localInterested = true;
+			}
+			
+			//dataIn.readFully(b);
+			
+			// Close IO streams
+			dataIn.close();
+			dataOut.flush();
+			dataOut.close();
+			
+			// Close socket
+			socket.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
 	/**
