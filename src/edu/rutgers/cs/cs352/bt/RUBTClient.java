@@ -3,9 +3,9 @@ package edu.rutgers.cs.cs352.bt;
 /* @author Jeffrey Rocha */
 
 import java.net.*;
+import java.nio.charset.Charset;
 import java.util.Random;
 import java.io.*;
-
 
 public class RUBTClient {
 	// Hard code the first 4 bytes of the peer ID
@@ -19,6 +19,8 @@ public class RUBTClient {
 	public static int downloaded = 0;
 	public static int left = 0;
 	
+	public static byte[] myPeerId;
+	
 	public static void main(String[] args) throws Exception {
 		
 		if (args.length != 2) { // error for incorrect amount of args
@@ -26,7 +28,7 @@ public class RUBTClient {
 			System.exit(1);
 		}
 		
-		byte[] myPeerId = generatePeerId();
+		myPeerId = generatePeerId();
 		
 		String torrent_file_name = args[0];
 		File torrent_file = new File(torrent_file_name); //creates file for torrent
@@ -92,8 +94,9 @@ public class RUBTClient {
 	 */
 	public static void getRequest() throws Exception{
 		
+		String torrent_hash = new String(torrent_info.info_hash.array(), Charset.forName("UTF-8"));
 		String urlName = torrent_info.announce_url.toString(); //makes the URL of the torrentInfo object into a string
-		URL url = new URL(urlName); // new URL object made from the string announce_url
+		URL url = new URL(urlName + torrent_hash + myPeerId.toString()); // new URL object made from the string announce_url
 		HttpURLConnection con = (HttpURLConnection) url.openConnection(); //open an HTTP connection
  
 		con.setRequestMethod("GET");
