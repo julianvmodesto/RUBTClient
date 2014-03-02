@@ -18,6 +18,7 @@ public class RUBTClient {
 	public static int uploaded = 0;
 	public static int downloaded = 0;
 	public static int left = 0;
+	public static int port = 6881;
 	
 	public static byte[] myPeerId;
 	
@@ -37,13 +38,20 @@ public class RUBTClient {
 		
 		byte[] torrent_bytes = getFileInBytes(torrent_file, torrent_file_name); //calls getFileInBytes to change the torrent file into a byte array
 		
-		torrent_info = new TorrentInfo(torrent_bytes); //initializes the torrentInfo 
-				
-		getRequest();
+		torrent_info = new TorrentInfo(torrent_bytes); //initializes the torrentInfo
+		left = torrent_info.torrent_file_bytes.length;
+		
+		while (left > 0 && port <= 6889)		
+			getRequest();
+		if (port > 6889)
+			System.err.println("There are no further ports available for use. Sorry.");
 	}
 	
-	/* Changes the torrent file into a byte array
+	/**
+	 * Changes the torrent file into a byte array
 	 * used to create the TorrentInfo object
+	 * @author Robert Moore
+	 * @return torrent file in byte array
 	 */
 	public static byte[] getFileInBytes(File torrent_file, String file_name){
 		
@@ -89,16 +97,27 @@ public class RUBTClient {
 		return torrent_bytes;
 	}
 	
-	/* Sends HTTP Get Request to 
+	/**
+	 * Sends HTTP Get Request to 
 	 * the tracker
+	 * @author Jeffrey Rocha
 	 */
-	public static void getRequest() throws Exception{
+	private static void getRequest() throws Exception{
 		
 		String torrent_hash = new String(torrent_info.info_hash.array(), Charset.forName("UTF-8"));
-		String urlName = torrent_info.announce_url.toString(); //makes the URL of the torrentInfo object into a string
-		int port = 6881;
+		String torrent_peerId = new String(myPeerId, Charset.forName("UTF-8"));
+		String urlName = torrent_info.announce_url.toString();
 		
-		URL url = new URL(urlName + torrent_hash + myPeerId.toString() + port + uploaded + downloaded + left + Event.STARTED); // new URL object made from the string announce_url
+		URL url; //Sets up the URL connection whether starting, completing, stopping, or going through the download
+		if (left == 0)
+			url = new URL(urlName + torrent_hash + torrent_peerId + port + uploaded + downloaded + left + Event.COMPLETED);
+		else if (uploaded == 0)
+			url = new URL(urlName + torrent_hash + torrent_peerId + port + uploaded + downloaded + left + Event.STARTED);
+		else if (downloaded == 0)
+			url = new URL(urlName + torrent_hash + torrent_peerId + port + uploaded + downloaded + left + Event.STOPPED);
+		else
+			url = new URL(urlName + torrent_hash + torrent_peerId + port + uploaded + downloaded + left);
+		
 		HttpURLConnection con = (HttpURLConnection) url.openConnection(); //open an HTTP connection
  
 		con.setRequestMethod("GET");
@@ -108,8 +127,7 @@ public class RUBTClient {
 		System.out.println("\nSending 'GET' request to URL : " + urlName);
 		System.out.println("Response Code : " + responseCode);
  
-		BufferedReader in = new BufferedReader(
-		        new InputStreamReader(con.getInputStream()));
+		BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
 		String inputLine;
 		StringBuffer response = new StringBuffer();
  
@@ -117,8 +135,10 @@ public class RUBTClient {
 			response.append(inputLine);
 		
 		in.close();
- 
 		System.out.println(response.toString());
+		
+		if (responseCode == 404)
+			port++;
 	}
 	
 	/**
