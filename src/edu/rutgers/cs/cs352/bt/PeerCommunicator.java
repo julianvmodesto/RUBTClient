@@ -288,19 +288,15 @@ public class PeerCommunicator extends Thread {
 					this.peerInterested = false;
 					break;
 				case PeerMessage.TYPE_HAVE:
-					// inspect bit field
+					//TODO inspect bit field
 					break;
 				case PeerMessage.TYPE_REQUEST:
-					// process request
+					//TODO process request
 					break;
 				case PeerMessage.TYPE_PIECE:
 					
 					break;
 				}
-				//inspect bitfield
-				//receive message, update internal state i.e. MESSAGE_CHOKEd => (?) localChoked = true;
-				//pass message to client
-				//send interest message, localInterested = true;
 			}
 			
 			// The peer is done now, kill the timer
@@ -335,30 +331,18 @@ public class PeerCommunicator extends Thread {
 		// Check if requesting last piece
 		if (this.pieceIndex == this.totalPieces - 1) {
 			// Request the last irregularly-sized piece
-			this.pieceLength = this.fileLength % this.pieceLength;
+			this.blockLength = this.fileLength % this.pieceLength;
 		}
 		
 		requestMessage = new PeerMessage.RequestMessage(this.pieceIndex, this.blockOffset, this.blockLength);
-				
+		
+		this.blockOffset += this.pieceLength;
+		
 		return requestMessage;
 	}
 	
 	private void setPieceIndex() {
 		this.pieceIndex++;
-	}
-
-	/**
-	 * 
-	 */
-	public void getAvailablePieces() {
-		
-	}
-
-	/**
-	 * 
-	 */
-	public void sendInterestedInPiece() {
-
 	}
 
 	public void verifyPiece(byte[] piece) {
@@ -369,13 +353,6 @@ public class PeerCommunicator extends Thread {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
-	}
-
-	/**
-	 * 
-	 */
-	public void requestPiece() {
 
 	}
 	
