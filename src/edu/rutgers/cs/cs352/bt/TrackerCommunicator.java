@@ -28,7 +28,7 @@ public class TrackerCommunicator {
 	 * @author Jeffrey Rocha
 	 * @throws Exception
 	 */
-	public static byte[] getRequest(int port, Event event) throws Exception{
+	public static Map getRequest(int port, Event event) throws Exception{
 
 		String urlName = RUBTClient.torrent_info.announce_url.toString(); //makes the URL of the torrentInfo object into a string
 		String peerId = RUBTClient.myPeerId.toString();
@@ -83,8 +83,6 @@ public class TrackerCommunicator {
 		}
 		in.close();
 		byte[] response_bytes = response.toString().getBytes();
-		Map response_map = (Map) Bencoder2.decode(response_bytes);
-		//print result
-		System.out.println(response_map.toString());
+		return (Map) Bencoder2.decode(response_bytes);
 	}
 }
