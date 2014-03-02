@@ -7,11 +7,14 @@ import java.io.*;
 
 
 public class RUBTClient {
-	public enum TrackerEvent {
+	public enum Event {
 		STARTED, COMPLETED, STOPPED
 	};
 	private static TorrentInfo torrent_info; //TorrentInfo object used for the program, created in main
-
+	public static int uploaded = 0;
+	public static int downloaded = 0;
+	public static int left = 0;
+	
 	public static void main(String[] args) throws Exception {
 		
 		if (args.length != 2) { // error for incorrect amount of args
