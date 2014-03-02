@@ -38,7 +38,7 @@ public class RUBTClient {
 		byte[] torrent_bytes = getFileInBytes(torrent_file, torrent_file_name); //calls getFileInBytes to change the torrent file into a byte array
 		
 		torrent_info = new TorrentInfo(torrent_bytes); //initializes the torrentInfo 
-				
+		
 		getRequest();
 	}
 	
@@ -96,7 +96,9 @@ public class RUBTClient {
 		
 		String torrent_hash = new String(torrent_info.info_hash.array(), Charset.forName("UTF-8"));
 		String urlName = torrent_info.announce_url.toString(); //makes the URL of the torrentInfo object into a string
-		URL url = new URL(urlName + torrent_hash + myPeerId.toString()); // new URL object made from the string announce_url
+		int port = 6881;
+		// new URL object made from the string announce_url
+		URL url = new URL(urlName + torrent_hash + myPeerId.toString() + port + uploaded + downloaded + left + Event.STARTED);
 		HttpURLConnection con = (HttpURLConnection) url.openConnection(); //open an HTTP connection
  
 		con.setRequestMethod("GET");
