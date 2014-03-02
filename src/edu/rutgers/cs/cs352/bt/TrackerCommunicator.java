@@ -70,8 +70,7 @@ public class TrackerCommunicator {
 		con.setRequestMethod("GET");
 		//response code used to find if connection was success or failure (and reason for failure)
 		int responseCode = con.getResponseCode();
-		System.out.println("\nSending 'GET' request to URL : " + urlName);
-		System.out.println("Response Code : " + responseCode);
+		System.out.println("HTTP response code:" + responseCode);
 
 		BufferedReader in = new BufferedReader(
 				new InputStreamReader(con.getInputStream()));
