@@ -43,8 +43,10 @@ public class RUBTClient {
 		
 		while (left > 0 && port <= 6889)		
 			getRequest();
-		if (port > 6889)
+		if (port > 6889){
 			System.err.println("There are no further ports available for use. Sorry.");
+			System.exit(1);
+		}
 	}
 	
 	/**
@@ -124,7 +126,7 @@ public class RUBTClient {
  
 		//response code used to find if connection was success or failure (and reason for failure)
 		int responseCode = con.getResponseCode();
-		System.out.println("\nSending 'GET' request to URL : " + urlName);
+		System.out.println("\nSending 'GET' request to URL : " + url);
 		System.out.println("Response Code : " + responseCode);
  
 		BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
