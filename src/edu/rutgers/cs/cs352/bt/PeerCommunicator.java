@@ -56,11 +56,12 @@ public class PeerCommunicator extends Thread {
 	private static int fileLength;
 
 	// Download information
-	private int pieceIndex;
+	private int pieceIndex = 0;
 	private int blockOffset;
 	int blockLength = PeerMessage.BLOCK_LENGTH;
 	
-	private byte[] bitField;
+	private byte[] myBitField;
+	private byte[] peerBitField;
 
 	private LinkedBlockingQueue<PeerMessage> peerMessages;
 
@@ -328,8 +329,8 @@ public class PeerCommunicator extends Thread {
 	 */
 	private PeerMessage getRequestMessage() {
 		PeerMessage.RequestMessage requestMessage;
-
 		
+		this.setPieceIndex();
 		
 		// Check if requesting last piece
 		if (this.pieceIndex == this.totalPieces - 1) {
@@ -337,11 +338,13 @@ public class PeerCommunicator extends Thread {
 			this.pieceLength = this.fileLength % this.pieceLength;
 		}
 		
-		this.pieceIndex++;
-		
 		requestMessage = new PeerMessage.RequestMessage(this.pieceIndex, this.blockOffset, this.blockLength);
-		
+				
 		return requestMessage;
+	}
+	
+	private void setPieceIndex() {
+		this.pieceIndex++;
 	}
 
 	/**
