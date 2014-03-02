@@ -105,7 +105,7 @@ public class PeerCommunicator extends Thread {
 		// Add peer id, which should match the infohash
 		System.arraycopy(peerId, 0, handshake, 48, this.peerId.length);	
 		
-		LOGGER.info("Generated handshake");
+		LOGGER.info("Generated handshake.");
 		
 		return handshake;
 	}
@@ -117,39 +117,33 @@ public class PeerCommunicator extends Thread {
 	 * @param otherHandshake
 	 * @return the truth value for the equality of the handshakes
 	 */
-	private boolean validateHandshake(byte[] myHandshake, byte[] otherHandshake) {
+	private boolean validateHandshake(byte[] otherHandshake) {
 		
-		if (myHandshake == null || otherHandshake == null) {
+		if (otherHandshake == null) {
 			return false;
 		}
 		
-		if (myHandshake.length != otherHandshake.length) {
+		if (otherHandshake.length != 68) {
 			return false;
 		}
 		
 		// Skip header and reserved bytes
 		
 		// Check info hash
-		byte[] myInfoHash = new byte[20];
 		byte[] otherInfoHash = new byte[20];
-		
-		System.arraycopy(myHandshake, 28, myInfoHash, 0, 20);
 		System.arraycopy(otherHandshake, 28, otherInfoHash, 0, 20);
-		
-		if (!Arrays.equals(myInfoHash, otherInfoHash)) {
+		if (!Arrays.equals(this.infohash, otherInfoHash)) {
 			return false;
 		}
 		
 		// Check peer ID
-		byte[] myPeerId = new byte[20];
 		byte[] otherPeerId = new byte[20];
-		
-		System.arraycopy(myHandshake, 48, myPeerId, 0, 20);
 		System.arraycopy(otherHandshake, 48, otherPeerId, 0, 20);
-		
-		if (!Arrays.equals(myPeerId, otherPeerId)) {
+		if (!Arrays.equals(this.peerId, otherPeerId)) {
 			return false;
 		}
+		
+		LOGGER.info("Handshake validated.");
 		
 		return true;
 	}
@@ -171,16 +165,16 @@ public class PeerCommunicator extends Thread {
 		try {
 			socket = new Socket(this.address, port);
 		} catch (UnknownHostException uhe) {
-			LOGGER.severe("Error: the IP address of the host could not be determined from " + this.address);
+			LOGGER.severe("Error: the IP address of the host could not be determined from " + this.address + ".");
 			LOGGER.severe(uhe.getMessage());
 		} catch (IOException ioe) {
-			LOGGER.severe("Error: an I/O error occurred");
+			LOGGER.severe("Error: an I/O error occurred.");
 			LOGGER.severe(ioe.getMessage());
 		}
 		
 		// Check if connected once but not closed
 		if (socket == null && !socket.isClosed()) {
-			LOGGER.severe("Error: socket connected once but not closed");
+			LOGGER.severe("Error: socket connected once but not closed.");
 		}
 		
 		// Open IO streams
@@ -190,21 +184,27 @@ public class PeerCommunicator extends Thread {
 	
 	public void run() {
 		try {
+			// Connect
 			connect();
 			
+			// Send handshake
 			byte[] myHandshake = getHandshake();
 			dataOut.write(myHandshake);
 			dataOut.flush();
 			
+			// Read response
 			byte[] peerHandshake = new byte[68];
 			dataIn.readFully(peerHandshake);
+			
+			// Validate handshake against info hash from .torrent file and peer ID
+			validateHandshake(peerHandshake);
 			
 			// Main loop
 			while (this.keepRunning) {
 				// read message from socket
 				PeerMessage message = PeerMessage.read(this.dataIn);
 				if (message == null) {
-					//error
+					LOGGER.severe("Error: no message.");
 				}
 				//switch(msg.getType())
 				//inspect bitfield
@@ -212,9 +212,7 @@ public class PeerCommunicator extends Thread {
 				//pass message to client
 				//send interest message, localInterested = true;
 			}
-			
-//			dataIn.readFully(b);
-			
+						
 			// Close IO streams
 			dataIn.close();
 			dataOut.flush();
