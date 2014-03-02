@@ -38,48 +38,64 @@ public class PeerMessage {
 	static final byte TYPE_INTERESTED = 2;
 	static final byte TYPE_UNINTERESTED = 3;
 	static final byte TYPE_HAVE = 4;
+	static final byte TYPE_BITFIELD = 5;
 	static final byte TYPE_REQUEST = 6;
 	static final byte TYPE_PIECE = 7;
+	static final byte TYPE_CANCEL = 8;
 	
 	private static final String[] TYPE_NAMES = {"choke","unchoke","interested","uninterested","have",
-		null,"request","piece"};
+		"bitField","request","piece","cancel"};
 	
 	// Messages
 	private static final PeerMessage MESSAGE_CHOKE = new PeerMessage(1, TYPE_CHOKE);
 	private static final PeerMessage MESSAGE_UNCHOKE = new PeerMessage(1, TYPE_UNCHOKE);
 	private static final PeerMessage MESSAGE_INTERESTED = new PeerMessage(1, TYPE_INTERESTED);
-	private static final PeerMessage MESSAGE_UNINTERESTEd = new PeerMessage(1, TYPE_UNINTERESTED);
-	private static final PeerMessage MESSAGE_HAVE = new PeerMessage(5, TYPE_HAVE);
-	private static final PeerMessage MESSAGE_REQUEST = new PeerMessage(13, TYPE_REQUEST);
-	private static final PeerMessage MESSAGE_PIECE = new PeerMessage(9, TYPE_PIECE);
+	private static final PeerMessage MESSAGE_UNINTERESTED = new PeerMessage(1, TYPE_UNINTERESTED);
+	//private static final PeerMessage MESSAGE_HAVE = new PeerMessage(5, TYPE_HAVE);
+	//private static final PeerMessage MESSAGE_REQUEST = new PeerMessage(13, TYPE_REQUEST);
+	//private static final PeerMessage MESSAGE_PIECE = new PeerMessage(9, TYPE_PIECE);
+	
 	
 	public static PeerMessage read(InputStream is) throws IOException {
 		DataInputStream dis = new DataInputStream(is);
-		byte[] message = new byte[1];
-		dis.readFully(message);
 		
-		if (message[0] == TYPE_CHOKE) {
-			
+		int length = dis.readInt();
+		
+		if (length == 0) {
+			// MESSAGE_KEEP_ALIVE
 		}
-		if (message[0] == TYPE_UNCHOKE) {
-			
+		
+		byte type = dis.readByte();
+		
+		int pieceIndex;
+		int blockOffset;
+		int blockLength;
+		
+		switch (type) {
+		case TYPE_CHOKE:
+			return MESSAGE_CHOKE;
+		case TYPE_UNCHOKE:
+			return MESSAGE_UNCHOKE;
+		case TYPE_INTERESTED:
+			return MESSAGE_INTERESTED;
+		case TYPE_UNINTERESTED:
+			return MESSAGE_UNINTERESTED;
+		case TYPE_HAVE:
+			pieceIndex = dis.readInt();
+			return new HaveMessage(pieceIndex);
+		case TYPE_BITFIELD:
+			byte[] bitField = new byte[length - 1];
+			dis.readFully(bitField);
+			return new BitFieldMessage(length, bitField);
+		case TYPE_REQUEST:
+			pieceIndex = dis.readInt();
+			blockOffset = dis.readInt();
+			blockLength = dis.readInt();
+			return new RequestMessage(pieceIndex, blockOffset, blockLength);
+		case TYPE_PIECE:
+			break;
 		}
-		if (message[0] == TYPE_INTERESTED) {
-			
-		}
-		if (message[0] == TYPE_UNINTERESTED) {
-			
-		}
-		if (message[0] == TYPE_HAVE) {
-			
-		}
-		if (message[0] == TYPE_REQUEST) {
-			
-		}
-		if (message[0] == TYPE_PIECE) {
-			
-		}
-		//return new BitFieldMessage(bits);
+		
 		return null;
 	}
 	
@@ -93,11 +109,33 @@ public class PeerMessage {
 		}
 	}
 	
-	private class BitFieldMessage {
+	public static class HaveMessage extends PeerMessage {
+		private final int pieceIndex;
 		
+		public HaveMessage(int pieceIndex) {
+			super(5, TYPE_HAVE);
+			this.pieceIndex = pieceIndex;
+		}
+		
+		public int getPieceIndex() {
+			return this.pieceIndex;
+		}
 	}
 	
-	public class RequestMessage extends PeerMessage {
+	public static class BitFieldMessage extends PeerMessage {
+		private final byte[] bitField;
+		
+		public BitFieldMessage(int length, byte[] bitField) {
+			super(1 + length, TYPE_BITFIELD);
+			this.bitField = bitField;
+		}
+		
+		public byte[] getBitField() {
+			return this.bitField;
+		}
+	}
+	
+	public static class RequestMessage extends PeerMessage {
 		private final int pieceIndex;
 		private final int blockOffset;
 		private final int blockLength;
@@ -109,12 +147,23 @@ public class PeerMessage {
 			this.blockLength = blockLength;
 		}
 		
-		protected void writePayload(OutputStream os) throws IOException {
+		public int getPieceIndex() {
+			return this.pieceIndex;
+		}
+		
+		public int getBlockOffset() {
+			return this.blockOffset;
+		}
+		
+		public int getBlockLength() {
+			return this.blockLength;
+		}
+		
+		public void writePayload(OutputStream os) throws IOException {
 			DataOutputStream dos = new DataOutputStream(os);
 			dos.writeInt(this.pieceIndex);
 			dos.writeInt(this.blockOffset);
 			dos.writeInt(this.blockLength);
-			
 		}
 		
 	}
