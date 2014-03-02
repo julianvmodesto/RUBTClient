@@ -50,9 +50,15 @@ public class PeerCommunicator extends Thread {
 	private DataInputStream dataIn;
 	private DataOutputStream dataOut;
 	
-	// Download
+	// File information
+	private static int pieceLength;
+	private static int totalPieces;
+	private static int fileLength;
+
+	// Download information
 	private int pieceIndex;
 	private int blockOffset;
+	int blockLength = PeerMessage.BLOCK_LENGTH;
 	
 	private byte[] bitField;
 
@@ -81,6 +87,11 @@ public class PeerCommunicator extends Thread {
 		this.peerChoking = true;
 		this.amInterested = false;
 		this.peerInterested = false;
+		
+		// Set file information
+		this.pieceLength = RUBTClient.torrent_info.piece_length;
+		this.totalPieces = RUBTClient.torrent_info.piece_hashes.length;
+		this.fileLength = RUBTClient.torrent_info.file_length;
 	}
 	
 	private void shutdown() {
@@ -308,16 +319,29 @@ public class PeerCommunicator extends Thread {
 		}
 	}
 
+	/**
+	 * Returns the next request message to be sent to the peer,
+	 * based on the remaining pieces to be downloaded
+	 * 
+	 * @author Julian Modesto
+	 * @return the request message
+	 */
 	private PeerMessage getRequestMessage() {
-		int pieceLength = RUBTClient.torrent_info.piece_length;
-		int totalPieces = RUBTClient.torrent_info.piece_hashes.length;
-		int fileLength = RUBTClient.torrent_info.file_length;
+		PeerMessage.RequestMessage requestMessage;
+
 		
-		int blockLength = PeerMessage.BLOCK_LENGTH;
 		
-		PeerMessage.RequestMessage requestMessage = new PeerMessage.RequestMessage(pieceIndex, blockOffset, blockLength);
+		// Check if requesting last piece
+		if (this.pieceIndex == this.totalPieces - 1) {
+			// Request the last irregularly-sized piece
+			this.pieceLength = this.fileLength % this.pieceLength;
+		}
 		
-		return null;
+		this.pieceIndex++;
+		
+		requestMessage = new PeerMessage.RequestMessage(this.pieceIndex, this.blockOffset, this.blockLength);
+		
+		return requestMessage;
 	}
 
 	/**
