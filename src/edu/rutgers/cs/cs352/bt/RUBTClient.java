@@ -102,12 +102,11 @@ public class RUBTClient {
 		String inputLine;
 		StringBuffer response = new StringBuffer();
  
-		while ((inputLine = in.readLine()) != null) {
+		while ((inputLine = in.readLine()) != null)
 			response.append(inputLine);
-		}
+		
 		in.close();
  
-		//print result
 		System.out.println(response.toString());
 	}
 }
