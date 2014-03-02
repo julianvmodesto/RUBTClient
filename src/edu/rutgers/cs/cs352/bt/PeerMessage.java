@@ -48,11 +48,11 @@ public class PeerMessage {
 		"bitField","request","piece","cancel"};
 	
 	// Messages
-	private static final PeerMessage MESSAGE_KEEP_ALIVE = new PeerMessage(0, TYPE_KEEP_ALIVE);
-	private static final PeerMessage MESSAGE_CHOKE = new PeerMessage(1, TYPE_CHOKE);
-	private static final PeerMessage MESSAGE_UNCHOKE = new PeerMessage(1, TYPE_UNCHOKE);
-	private static final PeerMessage MESSAGE_INTERESTED = new PeerMessage(1, TYPE_INTERESTED);
-	private static final PeerMessage MESSAGE_UNINTERESTED = new PeerMessage(1, TYPE_UNINTERESTED);
+	static final PeerMessage MESSAGE_KEEP_ALIVE = new PeerMessage(0, TYPE_KEEP_ALIVE);
+	static final PeerMessage MESSAGE_CHOKE = new PeerMessage(1, TYPE_CHOKE);
+	static final PeerMessage MESSAGE_UNCHOKE = new PeerMessage(1, TYPE_UNCHOKE);
+	static final PeerMessage MESSAGE_INTERESTED = new PeerMessage(1, TYPE_INTERESTED);
+	static final PeerMessage MESSAGE_UNINTERESTED = new PeerMessage(1, TYPE_UNINTERESTED);
 	
 	
 	public static PeerMessage read(InputStream is) throws IOException {
