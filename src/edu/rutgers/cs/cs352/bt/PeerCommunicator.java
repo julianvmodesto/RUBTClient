@@ -13,7 +13,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Logger;
+
+import edu.rutgers.cs.cs352.bt.PeerMessage.*;
 
 /**
  * @author Julian Modesto
@@ -39,6 +42,8 @@ public class PeerCommunicator extends Thread {
 	private Socket socket;
 	private DataInputStream dataIn;
 	private DataOutputStream dataOut;
+	
+	private LinkedBlockingQueue<PeerMessage> peerMessages;
 	
 	private byte[] peerId;
 	private String address;
@@ -207,20 +212,28 @@ public class PeerCommunicator extends Thread {
 				
 				switch (message.getType()) {
 				case PeerMessage.TYPE_KEEP_ALIVE:
+					peerMessages.add(message);
 					break;
 				case PeerMessage.TYPE_CHOKE:
+					peerMessages.add(message);
 					break;
 				case PeerMessage.TYPE_UNCHOKE:
+					peerMessages.add(message);
 					break;
 				case PeerMessage.TYPE_INTERESTED:
+					peerMessages.add(message);
 					break;
 				case PeerMessage.TYPE_UNINTERESTED:
+					peerMessages.add(message);
 					break;
 				case PeerMessage.TYPE_HAVE:
+					peerMessages.add(message);
 					break;
 				case PeerMessage.TYPE_REQUEST:
+					peerMessages.add(message);
 					break;
 				case PeerMessage.TYPE_PIECE:
+					peerMessages.add(message);
 					break;
 				}
 				//inspect bitfield
