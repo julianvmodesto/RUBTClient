@@ -3,6 +3,7 @@ package edu.rutgers.cs.cs352.bt;
 /* @author Jeffrey Rocha */
 
 import java.net.*;
+import java.util.Random;
 import java.io.*;
 
 
@@ -24,6 +25,8 @@ public class RUBTClient {
 			System.err.println("Error: two arguments required");
 			System.exit(1);
 		}
+		
+		byte[] myPeerId = generatePeerId();
 		
 		String torrent_file_name = args[0];
 		File torrent_file = new File(torrent_file_name); //creates file for torrent
@@ -111,5 +114,23 @@ public class RUBTClient {
 		in.close();
  
 		System.out.println(response.toString());
+	}
+	
+	/**
+	 * Generates the randomized peer ID with the first four bytes hard-coded with our group ID
+	 * 
+	 * @author Julian
+	 * @return the generated ID
+	 */
+	private static byte[] generatePeerId() {
+		byte[] peerId = new byte[20];
+		
+		// Hard code the first four bytes for easy identification
+		System.arraycopy(GROUP, 0, peerId, 0, GROUP.length);
+		
+		// Randomly generate remaining 16 bytes
+		new Random().nextBytes(peerId);
+		
+		return peerId;
 	}
 }
