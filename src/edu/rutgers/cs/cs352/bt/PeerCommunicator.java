@@ -21,8 +21,8 @@ import java.util.logging.Logger;
  */
 public class PeerCommunicator extends Thread {
 	
-	private final static Logger LOGGER = 
-			Logger.getLogger(PeerCommunicator.class.getName());
+//	private final static Logger LOGGER = 
+//			Logger.getLogger(PeerCommunicator.class.getName());
 	
 	// Hard code the first 4 bytes of the peer ID
 	private static final byte[] GROUP = {'G','P','1','6'};
@@ -107,7 +107,7 @@ public class PeerCommunicator extends Thread {
 		// Add peer id, which should match the infohash
 		System.arraycopy(peerId, 0, handshake, 48, this.peerId.length);	
 		
-		LOGGER.info("Generated handshake.");
+		System.out.println("Generated handshake.");
 		
 		return handshake;
 	}
@@ -138,7 +138,7 @@ public class PeerCommunicator extends Thread {
 			return false;
 		}
 		
-		LOGGER.info("Handshake validated.");
+		System.out.println("Handshake validated.");
 		
 		return true;
 	}
@@ -151,7 +151,7 @@ public class PeerCommunicator extends Thread {
 		
 		// Check that port number is within standard TCP range i.e. max port number is an unsigned, 16-bit short = 2^16 - 1 = 65535
 		if (port <= 0 | port >= 65535) {
-			LOGGER.warning("Error: port number" + port + "is out of bounds");
+			System.err.println("Error: port number" + port + "is out of bounds");
 			return;
 		}
 		
@@ -160,16 +160,16 @@ public class PeerCommunicator extends Thread {
 		try {
 			socket = new Socket(this.address, port);
 		} catch (UnknownHostException uhe) {
-			LOGGER.severe("Error: the IP address of the host could not be determined from " + this.address + ".");
-			LOGGER.severe(uhe.getMessage());
+			System.err.println("Error: the IP address of the host could not be determined from " + this.address + ".");
+			System.err.println(uhe.getMessage());
 		} catch (IOException ioe) {
-			LOGGER.severe("Error: an I/O error occurred.");
-			LOGGER.severe(ioe.getMessage());
+			System.err.println("Error: an I/O error occurred.");
+			System.err.println(ioe.getMessage());
 		}
 		
 		// Check if connected once but not closed
 		if (socket == null && !socket.isClosed()) {
-			LOGGER.severe("Error: socket connected once but not closed.");
+			System.err.println("Error: socket connected once but not closed.");
 		}
 		
 		// Open IO streams
@@ -202,7 +202,7 @@ public class PeerCommunicator extends Thread {
 				// read message from socket
 				PeerMessage message = PeerMessage.read(this.dataIn);
 				if (message == null) {
-					LOGGER.severe("Error: no message.");
+					System.err.println("Error: no message.");
 				}
 				
 				switch (message.getType()) {
