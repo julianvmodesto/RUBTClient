@@ -45,7 +45,7 @@ public class PeerMessage {
 		null,"request","piece"};
 	
 	// Messages
-	private static final PeerMessage MESSAGE_CHOKE = new PeerMessage(0, TYPE_CHOKE);
+	private static final PeerMessage MESSAGE_CHOKE = new PeerMessage(1, TYPE_CHOKE);
 	private static final PeerMessage MESSAGE_UNCHOKE = new PeerMessage(1, TYPE_UNCHOKE);
 	private static final PeerMessage MESSAGE_INTERESTED = new PeerMessage(1, TYPE_INTERESTED);
 	private static final PeerMessage MESSAGE_UNINTERESTEd = new PeerMessage(1, TYPE_UNINTERESTED);
@@ -81,9 +81,9 @@ public class PeerMessage {
 		
 		public RequestMessage(int pieceIndex, int blockOffset, int blockLength) {
 			super(13, TYPE_REQUEST);
-			 this.pieceIndex = pieceIndex;
-			 this.blockOffset = blockOffset;
-			 this.blockLength = blockLength;
+			this.pieceIndex = pieceIndex;
+			this.blockOffset = blockOffset;
+			this.blockLength = blockLength;
 		}
 		
 		protected void writePayload(OutputStream os) throws IOException {
