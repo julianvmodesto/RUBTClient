@@ -33,6 +33,9 @@ public class PeerCommunicator extends Thread {
 	//	private final static Logger LOGGER = 
 	//			Logger.getLogger(PeerCommunicator.class.getName());
 
+	// BitTorrent protocol
+	final byte[] PROTOCOL = {'B','i','t','T','o','r','r','e','n','t',' ',
+			'p','r','o','t','o','c','o','l'};
 
 	// Choked status and interested status of client and peer
 	private boolean amChoking; // this client is choking the peer
@@ -95,8 +98,6 @@ public class PeerCommunicator extends Thread {
 		handshake[0] = 19;
 
 		// Add "BitTorrent protocol"
-		final byte[] PROTOCOL = {'B','i','t','T','o','r','r','e','n','t',' ',
-				'p','r','o','t','o','c','o','l'};
 		System.arraycopy(PROTOCOL, 0, handshake, 1, PROTOCOL.length);
 
 		// 8 reserved bytes 20-27 are already initialized to 0; skip + omit commented-out code below
@@ -128,13 +129,27 @@ public class PeerCommunicator extends Thread {
 		if (otherHandshake.length != 68) {
 			return false;
 		}
+		
+		// Check protocol
+		byte[] otherProtocol = new byte[19];
+		System.arraycopy(otherHandshake, 1, otherProtocol, 0, PROTOCOL.length);
+		if (!Arrays.equals(otherProtocol, PROTOCOL)) {
+			return false;
+		}
 
 		// Skip header and reserved bytes
 
-		// Check info hash
+		// Check info hash against info hash from .torrent file
 		byte[] otherInfoHash = new byte[20];
 		System.arraycopy(otherHandshake, 28, otherInfoHash, 0, 20);
-		if (!Arrays.equals(this.infohash, otherInfoHash)) {
+		if (!Arrays.equals(otherInfoHash, this.infohash)) {
+			return false;
+		}
+		
+		// Check that peer ID is the same as from tracker
+		byte[] otherPeerId = new byte[20];
+		System.arraycopy(otherHandshake, 48, otherPeerId, 0, 20);
+		if (!Arrays.equals(otherPeerId, this.peerId)) {
 			return false;
 		}
 
@@ -212,8 +227,10 @@ public class PeerCommunicator extends Thread {
 			byte[] peerHandshake = new byte[68];
 			dataIn.readFully(peerHandshake);
 
-			// Validate handshake against info hash from .torrent file
-			validateHandshake(peerHandshake);
+			// Validate handshake
+			if (!validateHandshake(peerHandshake)) {
+				System.err.println("Error: handshake is incorrect.");
+			}
 
 			// Set peer ID
 			System.arraycopy(peerHandshake, 48, this.peerId, 0, 20);
@@ -275,7 +292,7 @@ public class PeerCommunicator extends Thread {
 			}
 			
 			// The peer is done now, kill the timer
-		    try {  this.keepAliveTimer.cancel(); }catch(Exception e){ }
+		    try { this.keepAliveTimer.cancel(); } catch(Exception e) { }
 
 			// Close IO streams
 			dataIn.close();
@@ -284,7 +301,6 @@ public class PeerCommunicator extends Thread {
 
 			// Close socket
 			socket.close();
-
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -327,6 +343,7 @@ public class PeerCommunicator extends Thread {
 	/**
 	 * Sends a keep-alive message to the remote peer if the time between now
 	 * and the previous message exceeds the limit set by KEEP_ALIVE_TIMEOUT.
+	 * @author Robert Moore
 	 * @throws Exception 
 	 */
 	protected void checkAndSendKeepAlive() throws Exception{
