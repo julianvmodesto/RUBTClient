@@ -70,6 +70,7 @@ public class PeerMessage {
 		int pieceIndex;
 		int blockOffset;
 		int blockLength;
+		byte[] block;
 		
 		switch (type) {
 		case TYPE_CHOKE:
@@ -93,7 +94,11 @@ public class PeerMessage {
 			blockLength = dis.readInt();
 			return new RequestMessage(pieceIndex, blockOffset, blockLength);
 		case TYPE_PIECE:
-			break;
+			pieceIndex = dis.readInt();
+			blockOffset = dis.readInt();
+			block = new byte[length - 9];
+			dis.readFully(block);
+			return new PieceMessage(pieceIndex, blockOffset, block);
 		}
 		
 		return null;
@@ -102,12 +107,12 @@ public class PeerMessage {
 	public void write(OutputStream os) throws IOException {
 		DataOutputStream dos = new DataOutputStream(os);
 		dos.writeInt(this.length);
-		dos.flush();
 		if (this.length == 0) {
 			//writeByte
 		} else if (this.length > 1) {
 			//writePayload
 		}
+		
 	}
 	
 	public static class HaveMessage extends PeerMessage {
@@ -133,6 +138,11 @@ public class PeerMessage {
 		
 		public byte[] getBitField() {
 			return this.bitField;
+		}
+		
+		public void write(OutputStream os) throws IOException {
+			DataOutputStream dos = new DataOutputStream(os);
+			dos.write(this.bitField);
 		}
 	}
 	
@@ -165,8 +175,39 @@ public class PeerMessage {
 			dos.writeInt(this.pieceIndex);
 			dos.writeInt(this.blockOffset);
 			dos.writeInt(this.blockLength);
-			dos.flush();
 		}
 		
+	}
+	
+	public static class PieceMessage extends PeerMessage {
+		private final int pieceIndex;
+		private final int blockOffset;
+		private final byte[] block;
+		
+		public PieceMessage (int pieceIndex, int blockOffset, byte block[]) {
+			super(9 + block.length, TYPE_PIECE);
+			this.pieceIndex = pieceIndex;
+			this.blockOffset = blockOffset;
+			this.block = block;
+		}
+		
+		public int getPieceIndex() {
+			return this.pieceIndex;
+		}
+		
+		public int getBlockOffset() {
+			return this.blockOffset;
+		}
+		
+		public byte[] getBlock() {
+			return this.block;
+		}
+		
+		public void writePayload(OutputStream os) throws IOException {
+			DataOutputStream dos = new DataOutputStream(os);
+			dos.writeInt(this.pieceIndex);
+			dos.writeInt(this.blockOffset);
+			dos.write(this.block);
+		}
 	}
 }
