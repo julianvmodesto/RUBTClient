@@ -16,6 +16,8 @@ import java.util.Random;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Logger;
 
+import edu.rutgers.cs.cs352.bt.PeerMessage.PieceMessage;
+import edu.rutgers.cs.cs352.bt.PeerMessage.RequestMessage;
 import edu.rutgers.cs.cs352.bt.PeerMessage.*;
 
 /**
@@ -44,6 +46,8 @@ public class PeerCommunicator extends Thread {
 	private DataOutputStream dataOut;
 	
 	private LinkedBlockingQueue<PeerMessage> peerMessages;
+	private LinkedBlockingQueue<RequestMessage> requestMessages;
+	private LinkedBlockingQueue<PieceMessage> pieceMessages;
 	
 	private byte[] peerId;
 	private String address;
@@ -110,7 +114,8 @@ public class PeerCommunicator extends Thread {
 		System.arraycopy(infohash, 0, handshake, 28, this.infohash.length);
 		
 		// Add peer id, which should match the infohash
-		System.arraycopy(peerId, 0, handshake, 48, this.peerId.length);	
+		this.myPeerId = generatePeerId();
+		System.arraycopy(this.myPeerId, 0, handshake, 48, this.myPeerId.length);	
 		
 		System.out.println("Generated handshake.");
 		
@@ -216,24 +221,40 @@ public class PeerCommunicator extends Thread {
 					break;
 				case PeerMessage.TYPE_CHOKE:
 					peerMessages.add(message);
+					
+					// Update internal state
+					this.peerChoking = true;
+					
 					break;
 				case PeerMessage.TYPE_UNCHOKE:
 					peerMessages.add(message);
+					
+					// Update internal state
+					this.peerChoking = false;
+					
 					break;
 				case PeerMessage.TYPE_INTERESTED:
 					peerMessages.add(message);
+					
+					// Update internal state
+					this.peerInterested = true;
+					
 					break;
 				case PeerMessage.TYPE_UNINTERESTED:
 					peerMessages.add(message);
+					
+					// Update internal state
+					this.peerInterested = false;
+					
 					break;
 				case PeerMessage.TYPE_HAVE:
 					peerMessages.add(message);
 					break;
 				case PeerMessage.TYPE_REQUEST:
-					peerMessages.add(message);
+					requestMessages.add((RequestMessage) message);
 					break;
 				case PeerMessage.TYPE_PIECE:
-					peerMessages.add(message);
+					pieceMessages.add((PieceMessage) message);
 					break;
 				}
 				//inspect bitfield
