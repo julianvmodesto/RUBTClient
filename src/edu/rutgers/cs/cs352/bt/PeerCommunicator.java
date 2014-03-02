@@ -78,6 +78,10 @@ public class PeerCommunicator extends Thread {
 		this.amInterested = false;
 		this.peerInterested = false;
 	}
+	
+	private void shutdown() {
+		this.keepRunning = false;
+	}
 
 	/**
 	 * Generates the handshake from the client to the peer.
@@ -312,7 +316,7 @@ public class PeerCommunicator extends Thread {
 	 * 
 	 */
 	public void getAvailablePieces() {
-
+		
 	}
 
 	/**
