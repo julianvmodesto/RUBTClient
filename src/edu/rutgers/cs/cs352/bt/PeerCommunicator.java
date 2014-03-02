@@ -268,8 +268,8 @@ public class PeerCommunicator extends Thread {
 					// Update internal state
 					this.peerInterested = true;
 					
-					// send PeerMessage.MESSAGE_UNCHOKE
-
+					// Send unchoke request
+					this.sendPeerMessage(PeerMessage.MESSAGE_UNCHOKE);
 					break;
 				case PeerMessage.TYPE_UNINTERESTED:
 					// Update internal state
@@ -356,5 +356,9 @@ public class PeerCommunicator extends Thread {
 			}
 			System.out.println("Sent Keep-Alive");
 		}
+	}
+	
+	private void sendPeerMessage(PeerMessage peerMessage) throws IOException {
+		peerMessage.write(this.dataOut);
 	}
 }
