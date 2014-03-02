@@ -5,8 +5,11 @@ package edu.rutgers.cs.cs352.bt;
 import java.net.*;
 import java.io.*;
 
+
 public class RUBTClient {
-	
+	public enum TrackerEvent {
+		STARTED, COMPLETED, STOPPED
+	};
 	private static TorrentInfo torrent_info; //TorrentInfo object used for the program, created in main
 
 	public static void main(String[] args) throws Exception {
