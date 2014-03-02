@@ -33,13 +33,13 @@ public class PeerMessage {
 	}
 		
 	// Types
-	private static final byte TYPE_CHOKE = 0;
-	private static final byte TYPE_UNCHOKE = 1;
-	private static final byte TYPE_INTERESTED = 2;
-	private static final byte TYPE_UNINTERESTED = 3;
-	private static final byte TYPE_HAVE = 4;
-	private static final byte TYPE_REQUEST = 6;
-	private static final byte TYPE_PIECE = 7;
+	static final byte TYPE_CHOKE = 0;
+	static final byte TYPE_UNCHOKE = 1;
+	static final byte TYPE_INTERESTED = 2;
+	static final byte TYPE_UNINTERESTED = 3;
+	static final byte TYPE_HAVE = 4;
+	static final byte TYPE_REQUEST = 6;
+	static final byte TYPE_PIECE = 7;
 	
 	private static final String[] TYPE_NAMES = {"choke","unchoke","interested","uninterested","have",
 		null,"request","piece"};

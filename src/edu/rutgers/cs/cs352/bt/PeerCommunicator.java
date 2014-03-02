@@ -3,16 +3,14 @@
  */
 package edu.rutgers.cs.cs352.bt;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.lang.reflect.Array;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.logging.Logger;
@@ -29,7 +27,7 @@ public class PeerCommunicator extends Thread {
 	// Hard code the first 4 bytes of the peer ID
 	private static final byte[] GROUP = {'G','P','1','6'};
 	
-	// Chocked status
+	// Choked status and interested status of client and peer
 	// local client = us
 	// remote client = them
 	private boolean localChoked; 
@@ -56,6 +54,12 @@ public class PeerCommunicator extends Thread {
 		this.port = port;
 		this.infohash = infohash;
 		this.myPeerId = myPeerId;
+		
+		// Set default states
+		this.localChoked = true;
+		this.remoteChoked = true;
+		this.localInterested = false;
+		this.remoteInterested = false;
 	}
 	
 	/**
@@ -136,13 +140,6 @@ public class PeerCommunicator extends Thread {
 			return false;
 		}
 		
-		// Check peer ID
-		byte[] otherPeerId = new byte[20];
-		System.arraycopy(otherHandshake, 48, otherPeerId, 0, 20);
-		if (!Arrays.equals(this.peerId, otherPeerId)) {
-			return false;
-		}
-		
 		LOGGER.info("Handshake validated.");
 		
 		return true;
@@ -196,8 +193,11 @@ public class PeerCommunicator extends Thread {
 			byte[] peerHandshake = new byte[68];
 			dataIn.readFully(peerHandshake);
 			
-			// Validate handshake against info hash from .torrent file and peer ID
+			// Validate handshake against info hash from .torrent file
 			validateHandshake(peerHandshake);
+			
+			// Set peer ID
+			System.arraycopy(peerHandshake, 48, this.peerId, 0, 20);
 			
 			// Main loop
 			while (this.keepRunning) {
@@ -206,7 +206,23 @@ public class PeerCommunicator extends Thread {
 				if (message == null) {
 					LOGGER.severe("Error: no message.");
 				}
-				//switch(msg.getType())
+				
+				switch (message.getType()) {
+				case PeerMessage.TYPE_CHOKE:
+					break;
+				case PeerMessage.TYPE_UNCHOKE:
+					break;
+				case PeerMessage.TYPE_INTERESTED:
+					break;
+				case PeerMessage.TYPE_UNINTERESTED:
+					break;
+				case PeerMessage.TYPE_HAVE:
+					break;
+				case PeerMessage.TYPE_REQUEST:
+					break;
+				case PeerMessage.TYPE_PIECE:
+					break;
+				}
 				//inspect bitfield
 				//receive message, update internal state i.e. MESSAGE_CHOKEd => (?) localChoked = true;
 				//pass message to client
@@ -220,6 +236,8 @@ public class PeerCommunicator extends Thread {
 			
 			// Close socket
 			socket.close();
+			
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -237,6 +255,17 @@ public class PeerCommunicator extends Thread {
 	 * 
 	 */
 	public void sendInterestedInPiece() {
+		
+	}
+	
+	public void verifyPiece(byte[] piece) {
+		try {
+			MessageDigest sha = MessageDigest.getInstance("SHA-1");
+			byte[] hash = sha.digest(piece);
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 	}
 	
