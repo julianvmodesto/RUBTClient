@@ -28,27 +28,14 @@ public class TrackerCommunicator {
 	 * @author Jeffrey Rocha
 	 * @throws Exception
 	 */
-	public static Map getRequest(int port, Event event) throws Exception{
+	public static Map getRequest(int port, String event) throws Exception{
 
 		String urlName = RUBTClient.torrent_info.announce_url.toString(); //makes the URL of the torrentInfo object into a string
 		String peerId = RUBTClient.myPeerId.toString();
 		String ip = InetAddress.getLocalHost().toString();
 		String downloaded = Integer.toString(RUBTClient.downloaded);
 		String left = Integer.toString(RUBTClient.left);
-		String eventString = "";
-		switch(event){
-		case STARTED:
-			eventString = "started";
-			break;
-		case COMPLETED:
-			eventString = "completed";
-			break;
-		case STOPPED:
-			eventString = "stopped";
-			break;
-		default:
-			break;
-		}
+		String eventString = event;
 		String query = "info_hash=";
 		query += RUBTClient.torrent_info.info_hash.toString();
 		query += "&peer_id=";

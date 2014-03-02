@@ -40,9 +40,9 @@ public class RUBTClient {
 		
 		torrent_info = new TorrentInfo(torrent_bytes); //initializes the torrentInfo
 		left = torrent_info.torrent_file_bytes.length;
-		
+		String event = "started";
 		while (left > 0 && port <= 6889)		
-			getRequest();
+			TrackerCommunicator.getRequest(port, event);
 		if (port > 6889){
 			System.err.println("There are no further ports available for use. Sorry.");
 			System.exit(1);
