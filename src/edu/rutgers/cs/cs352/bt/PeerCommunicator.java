@@ -68,22 +68,6 @@ public class PeerCommunicator extends Thread {
 	}
 	
 	/**
-	 * 
-	 * @return the generated ID
-	 */
-	private byte[] generatePeerId() {
-		byte[] peerId = new byte[20];
-		
-		// Hard code the first four bytes for easy identification
-		System.arraycopy(GROUP, 0, peerId, 0, GROUP.length);
-		
-		// Randomly generate remaining 16 bytes
-		new Random().nextBytes(peerId);
-		
-		return peerId;
-	}
-	
-	/**
 	 * Generates the handshake from the client to the peer.
 	 * 
 	 * The byte array is preallocated and then filled with System.arraycopy.
