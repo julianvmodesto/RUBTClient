@@ -14,7 +14,7 @@ public class RUBTClient {
 	public static int uploaded = 0;
 	public static int downloaded = 0;
 	public static int left = 0;
-	
+	public static TorrentInfo torrentinfo;
 	public static void main(String[] args) throws Exception {
 		
 		if (args.length != 2) { // error for incorrect amount of args
