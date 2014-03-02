@@ -8,6 +8,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 
 /**
  * @author Julian Modesto
@@ -32,7 +33,6 @@ public class PeerMessage {
 	}
 		
 	// Types
-	
 	private static final byte TYPE_CHOKE = 0;
 	private static final byte TYPE_UNCHOKE = 1;
 	private static final byte TYPE_INTERESTED = 2;
@@ -53,9 +53,32 @@ public class PeerMessage {
 	private static final PeerMessage MESSAGE_REQUEST = new PeerMessage(13, TYPE_REQUEST);
 	private static final PeerMessage MESSAGE_PIECE = new PeerMessage(9, TYPE_PIECE);
 	
-	public static PeerMessage read(InputStream is) {
+	public static PeerMessage read(InputStream is) throws IOException {
 		DataInputStream dis = new DataInputStream(is);
-		//switch case TYPE_BLAH
+		byte[] message = new byte[1];
+		dis.readFully(message);
+		
+		if (message[0] == TYPE_CHOKE) {
+			
+		}
+		if (message[0] == TYPE_UNCHOKE) {
+			
+		}
+		if (message[0] == TYPE_INTERESTED) {
+			
+		}
+		if (message[0] == TYPE_UNINTERESTED) {
+			
+		}
+		if (message[0] == TYPE_HAVE) {
+			
+		}
+		if (message[0] == TYPE_REQUEST) {
+			
+		}
+		if (message[0] == TYPE_PIECE) {
+			
+		}
 		//return new BitFieldMessage(bits);
 		return null;
 	}
