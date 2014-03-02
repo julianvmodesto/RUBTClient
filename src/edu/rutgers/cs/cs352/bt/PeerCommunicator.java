@@ -29,8 +29,6 @@ public class PeerCommunicator extends Thread {
 //	private final static Logger LOGGER = 
 //			Logger.getLogger(PeerCommunicator.class.getName());
 	
-	// Hard code the first 4 bytes of the peer ID
-	private static final byte[] GROUP = {'G','P','1','6'};
 	
 	// Choked status and interested status of client and peer
 	private boolean amChoking; // this client is choking the peer

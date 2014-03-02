@@ -7,6 +7,9 @@ import java.io.*;
 
 
 public class RUBTClient {
+	// Hard code the first 4 bytes of the peer ID
+	private static final byte[] GROUP = {'G','P','1','6'};
+	
 	public enum Event {
 		STARTED, COMPLETED, STOPPED
 	};
