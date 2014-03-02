@@ -32,6 +32,7 @@ public class PeerMessage {
 	}
 		
 	// Types
+	
 	private static final byte TYPE_CHOKE = 0;
 	private static final byte TYPE_UNCHOKE = 1;
 	private static final byte TYPE_INTERESTED = 2;
@@ -40,16 +41,17 @@ public class PeerMessage {
 	private static final byte TYPE_REQUEST = 6;
 	private static final byte TYPE_PIECE = 7;
 	
-	private static final String[] TYPE_NAMES = {"choke","unchoke","interested","uninterested","have","request","piece"};
+	private static final String[] TYPE_NAMES = {"choke","unchoke","interested","uninterested","have",
+		null,"request","piece"};
 	
 	// Messages
 	private static final PeerMessage MESSAGE_CHOKE = new PeerMessage(0, TYPE_CHOKE);
-	private static final PeerMessage MESSAGE_UNCHOKE = new PeerMessage(0, TYPE_UNCHOKE);
-	private static final PeerMessage MESSAGE_INTERESTED = new PeerMessage(0, TYPE_INTERESTED);
-	private static final PeerMessage MESSAGE_UNINTERESTEd = new PeerMessage(0, TYPE_UNINTERESTED);
-	private static final PeerMessage MESSAGE_HAVE = new PeerMessage(0, TYPE_HAVE);
-	private static final PeerMessage MESSAGE_REQUEST = new PeerMessage(0, TYPE_REQUEST);
-	private static final PeerMessage MESSAGE_PIECE = new PeerMessage(0, TYPE_PIECE);
+	private static final PeerMessage MESSAGE_UNCHOKE = new PeerMessage(1, TYPE_UNCHOKE);
+	private static final PeerMessage MESSAGE_INTERESTED = new PeerMessage(1, TYPE_INTERESTED);
+	private static final PeerMessage MESSAGE_UNINTERESTEd = new PeerMessage(1, TYPE_UNINTERESTED);
+	private static final PeerMessage MESSAGE_HAVE = new PeerMessage(5, TYPE_HAVE);
+	private static final PeerMessage MESSAGE_REQUEST = new PeerMessage(13, TYPE_REQUEST);
+	private static final PeerMessage MESSAGE_PIECE = new PeerMessage(9, TYPE_PIECE);
 	
 	public static PeerMessage read(InputStream is) {
 		DataInputStream dis = new DataInputStream(is);
