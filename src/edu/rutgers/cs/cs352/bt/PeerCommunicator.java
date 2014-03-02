@@ -96,7 +96,6 @@ public class PeerCommunicator extends Thread {
 		System.arraycopy(infohash, 0, handshake, 28, this.infohash.length);
 		
 		// Add peer id, which should match the infohash
-		this.myPeerId = generatePeerId();
 		System.arraycopy(this.myPeerId, 0, handshake, 48, this.myPeerId.length);	
 		
 		System.out.println("Generated handshake.");
