@@ -14,7 +14,7 @@ public class RUBTClient {
 	public enum Event {
 		STARTED, COMPLETED, STOPPED
 	};
-	private static TorrentInfo torrent_info; //TorrentInfo object used for the program, created in main
+	public static TorrentInfo torrent_info; //TorrentInfo object used for the program, created in main
 	public static int uploaded = 0;
 	public static int downloaded = 0;
 	public static int left = 0;
@@ -38,7 +38,7 @@ public class RUBTClient {
 		byte[] torrent_bytes = getFileInBytes(torrent_file, torrent_file_name); //calls getFileInBytes to change the torrent file into a byte array
 		
 		torrent_info = new TorrentInfo(torrent_bytes); //initializes the torrentInfo 
-		
+				
 		getRequest();
 	}
 	
@@ -97,8 +97,8 @@ public class RUBTClient {
 		String torrent_hash = new String(torrent_info.info_hash.array(), Charset.forName("UTF-8"));
 		String urlName = torrent_info.announce_url.toString(); //makes the URL of the torrentInfo object into a string
 		int port = 6881;
-		// new URL object made from the string announce_url
-		URL url = new URL(urlName + torrent_hash + myPeerId.toString() + port + uploaded + downloaded + left + Event.STARTED);
+		
+		URL url = new URL(urlName + torrent_hash + myPeerId.toString() + port + uploaded + downloaded + left + Event.STARTED); // new URL object made from the string announce_url
 		HttpURLConnection con = (HttpURLConnection) url.openConnection(); //open an HTTP connection
  
 		con.setRequestMethod("GET");
