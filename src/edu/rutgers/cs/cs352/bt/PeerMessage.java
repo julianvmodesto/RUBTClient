@@ -125,6 +125,14 @@ public class PeerMessage {
 		
 	}
 	
+	public static class KeepAliveMessage extends PeerMessage {
+
+		public KeepAliveMessage() {
+			super(0, TYPE_KEEP_ALIVE);
+		}
+		
+	}
+	
 	public static class HaveMessage extends PeerMessage {
 		private final int pieceIndex;
 		

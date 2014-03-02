@@ -3,24 +3,32 @@ package edu.rutgers.cs.cs352.bt;
 /* @author Jeffrey Rocha */
 
 import java.net.*;
+import java.nio.charset.Charset;
+import java.util.Random;
 import java.io.*;
 
-
 public class RUBTClient {
+	// Hard code the first 4 bytes of the peer ID
+	private static final byte[] GROUP = {'G','P','1','6'};
+	
 	public enum Event {
 		STARTED, COMPLETED, STOPPED
 	};
-	private static TorrentInfo torrent_info; //TorrentInfo object used for the program, created in main
+	public static TorrentInfo torrent_info; //TorrentInfo object used for the program, created in main
 	public static int uploaded = 0;
 	public static int downloaded = 0;
 	public static int left = 0;
-	public static TorrentInfo torrentinfo;
+	
+	public static byte[] myPeerId;
+	
 	public static void main(String[] args) throws Exception {
 		
 		if (args.length != 2) { // error for incorrect amount of args
 			System.err.println("Error: two arguments required");
 			System.exit(1);
 		}
+		
+		myPeerId = generatePeerId();
 		
 		String torrent_file_name = args[0];
 		File torrent_file = new File(torrent_file_name); //creates file for torrent
@@ -86,8 +94,9 @@ public class RUBTClient {
 	 */
 	public static void getRequest() throws Exception{
 		
+		String torrent_hash = new String(torrent_info.info_hash.array(), Charset.forName("UTF-8"));
 		String urlName = torrent_info.announce_url.toString(); //makes the URL of the torrentInfo object into a string
-		URL url = new URL(urlName); // new URL object made from the string announce_url
+		URL url = new URL(urlName + torrent_hash + myPeerId.toString()); // new URL object made from the string announce_url
 		HttpURLConnection con = (HttpURLConnection) url.openConnection(); //open an HTTP connection
  
 		con.setRequestMethod("GET");
@@ -102,12 +111,29 @@ public class RUBTClient {
 		String inputLine;
 		StringBuffer response = new StringBuffer();
  
-		while ((inputLine = in.readLine()) != null) {
+		while ((inputLine = in.readLine()) != null)
 			response.append(inputLine);
-		}
+		
 		in.close();
  
-		//print result
 		System.out.println(response.toString());
+	}
+	
+	/**
+	 * Generates the randomized peer ID with the first four bytes hard-coded with our group ID
+	 * 
+	 * @author Julian
+	 * @return the generated ID
+	 */
+	private static byte[] generatePeerId() {
+		byte[] peerId = new byte[20];
+		
+		// Hard code the first four bytes for easy identification
+		System.arraycopy(GROUP, 0, peerId, 0, GROUP.length);
+		
+		// Randomly generate remaining 16 bytes
+		new Random().nextBytes(peerId);
+		
+		return peerId;
 	}
 }
