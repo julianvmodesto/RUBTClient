@@ -12,10 +12,14 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Logger;
 
+import edu.rutgers.cs.cs352.bt.PeerMessage.KeepAliveMessage;
 import edu.rutgers.cs.cs352.bt.PeerMessage.PieceMessage;
 import edu.rutgers.cs.cs352.bt.PeerMessage.RequestMessage;
 import edu.rutgers.cs.cs352.bt.PeerMessage.*;
@@ -25,48 +29,53 @@ import edu.rutgers.cs.cs352.bt.PeerMessage.*;
  *
  */
 public class PeerCommunicator extends Thread {
-	
-//	private final static Logger LOGGER = 
-//			Logger.getLogger(PeerCommunicator.class.getName());
-	
-	
+
+	//	private final static Logger LOGGER = 
+	//			Logger.getLogger(PeerCommunicator.class.getName());
+
+
 	// Choked status and interested status of client and peer
 	private boolean amChoking; // this client is choking the peer
 	private boolean peerChoking; // peer is choking this client
 	private boolean amInterested; // this client is interested in the peer
 	private boolean peerInterested; // peer is interested in this client
-	
+
 	// Flag to keep the peer running
 	private boolean keepRunning;
-	
+
 	private Socket socket;
 	private DataInputStream dataIn;
 	private DataOutputStream dataOut;
-	
+
 	private LinkedBlockingQueue<PeerMessage> peerMessages;
 	private LinkedBlockingQueue<RequestMessage> requestMessages;
 	private LinkedBlockingQueue<PieceMessage> pieceMessages;
-	
+
+	// Set up timer
+	private static final long KEEP_ALIVE_TIMEOUT = 120000;
+	private Timer keepAliveTimer = new Timer();
+	private long lastMessageTime = System.currentTimeMillis();
+
 	private byte[] peerId;
 	private String address;
 	private int port;
 	private byte[] infohash;
 	private byte[] myPeerId;
-	
+
 	private PeerCommunicator(byte[] peerId, String address, int port, byte[] infohash, byte[] myPeerId) {
 		this.peerId = peerId;
 		this.address = address;
 		this.port = port;
 		this.infohash = infohash;
 		this.myPeerId = myPeerId;
-		
+
 		// Set default states
 		this.amChoking = true;
 		this.peerChoking = true;
 		this.amInterested = false;
 		this.peerInterested = false;
 	}
-	
+
 	/**
 	 * Generates the handshake from the client to the peer.
 	 * 
@@ -80,29 +89,29 @@ public class PeerCommunicator extends Thread {
 	private byte[] getHandshake() {
 		// Preallocate bytes for handshake
 		byte[] handshake = new byte[68];
-		
+
 		// Header 19:BitTorrent protocol
 		// Begin with byte 19
 		handshake[0] = 19;
-		
+
 		// Add "BitTorrent protocol"
 		final byte[] PROTOCOL = {'B','i','t','T','o','r','r','e','n','t',' ',
 				'p','r','o','t','o','c','o','l'};
 		System.arraycopy(PROTOCOL, 0, handshake, 1, PROTOCOL.length);
-		
+
 		// 8 reserved bytes 20-27 are already initialized to 0; skip + omit commented-out code below
-		
+
 		// Add infohash SHA-1 hash - not encoded
 		System.arraycopy(infohash, 0, handshake, 28, this.infohash.length);
-		
+
 		// Add peer id, which should match the infohash
 		System.arraycopy(this.myPeerId, 0, handshake, 48, this.myPeerId.length);	
-		
+
 		System.out.println("Generated handshake.");
-		
+
 		return handshake;
 	}
-	
+
 	/**
 	 * Validate two handshakes for equality
 	 * 
@@ -111,41 +120,41 @@ public class PeerCommunicator extends Thread {
 	 * @return the truth value for the equality of the handshakes
 	 */
 	private boolean validateHandshake(byte[] otherHandshake) {
-		
+
 		if (otherHandshake == null) {
 			return false;
 		}
-		
+
 		if (otherHandshake.length != 68) {
 			return false;
 		}
-		
+
 		// Skip header and reserved bytes
-		
+
 		// Check info hash
 		byte[] otherInfoHash = new byte[20];
 		System.arraycopy(otherHandshake, 28, otherInfoHash, 0, 20);
 		if (!Arrays.equals(this.infohash, otherInfoHash)) {
 			return false;
 		}
-		
+
 		System.out.println("Handshake validated.");
-		
+
 		return true;
 	}
-	
+
 	/**
 	 * @throws IOException 
 	 * 
 	 */
 	private void connect() throws IOException {
-		
+
 		// Check that port number is within standard TCP range i.e. max port number is an unsigned, 16-bit short = 2^16 - 1 = 65535
 		if (port <= 0 | port >= 65535) {
 			System.err.println("Error: port number" + port + "is out of bounds");
 			return;
 		}
-		
+
 		// Create socket
 		socket = null;
 		try {
@@ -157,37 +166,58 @@ public class PeerCommunicator extends Thread {
 			System.err.println("Error: an I/O error occurred.");
 			System.err.println(ioe.getMessage());
 		}
-		
+
 		// Check if connected once but not closed
 		if (socket == null && !socket.isClosed()) {
 			System.err.println("Error: socket connected once but not closed.");
 		}
-		
+
 		// Open IO streams
 		dataIn = new DataInputStream(socket.getInputStream());
 		dataOut = new DataOutputStream(socket.getOutputStream());
 	}
-	
+
+	/**
+	 * The peer's run method - keeps reading messages 
+	 * from the remote peer until disconnected.
+	 * 
+	 */
 	public void run() {
 		try {
 			// Connect
 			connect();
 			
+			/* Schedules a new anonymous implementation of a TimerTask that
+		     * will start now and execute every 10 seconds afterward.
+		     */
+		    this.keepAliveTimer.scheduleAtFixedRate(new TimerTask(){
+		      public void run(){
+		        // Let the peer figure out how/when to send a keep-alive
+		        try {
+					PeerCommunicator.this.checkAndSendKeepAlive();
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		      }
+		    
+		    }, new Date(), 10000);
+
 			// Send handshake
 			byte[] myHandshake = getHandshake();
 			dataOut.write(myHandshake);
 			dataOut.flush();
-			
+
 			// Read response
 			byte[] peerHandshake = new byte[68];
 			dataIn.readFully(peerHandshake);
-			
+
 			// Validate handshake against info hash from .torrent file
 			validateHandshake(peerHandshake);
-			
+
 			// Set peer ID
 			System.arraycopy(peerHandshake, 48, this.peerId, 0, 20);
-			
+
 			// Main loop
 			while (this.keepRunning) {
 				// read message from socket
@@ -195,38 +225,38 @@ public class PeerCommunicator extends Thread {
 				if (message == null) {
 					System.err.println("Error: no message.");
 				}
-				
+
 				switch (message.getType()) {
 				case PeerMessage.TYPE_KEEP_ALIVE:
 					peerMessages.add(message);
 					break;
 				case PeerMessage.TYPE_CHOKE:
 					peerMessages.add(message);
-					
+
 					// Update internal state
 					this.peerChoking = true;
-					
+
 					break;
 				case PeerMessage.TYPE_UNCHOKE:
 					peerMessages.add(message);
-					
+
 					// Update internal state
 					this.peerChoking = false;
-					
+
 					break;
 				case PeerMessage.TYPE_INTERESTED:
 					peerMessages.add(message);
-					
+
 					// Update internal state
 					this.peerInterested = true;
-					
+
 					break;
 				case PeerMessage.TYPE_UNINTERESTED:
 					peerMessages.add(message);
-					
+
 					// Update internal state
 					this.peerInterested = false;
-					
+
 					break;
 				case PeerMessage.TYPE_HAVE:
 					peerMessages.add(message);
@@ -243,36 +273,39 @@ public class PeerCommunicator extends Thread {
 				//pass message to client
 				//send interest message, localInterested = true;
 			}
-						
+			
+			// The peer is done now, kill the timer
+		    try {  this.keepAliveTimer.cancel(); }catch(Exception e){ }
+
 			// Close IO streams
 			dataIn.close();
 			dataOut.flush();
 			dataOut.close();
-			
+
 			// Close socket
 			socket.close();
-			
-			
+
+
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
-	
+
 	/**
 	 * 
 	 */
 	public void getAvailablePieces() {
-		
+
 	}
-	
+
 	/**
 	 * 
 	 */
 	public void sendInterestedInPiece() {
-		
+
 	}
-	
+
 	public void verifyPiece(byte[] piece) {
 		try {
 			MessageDigest sha = MessageDigest.getInstance("SHA-1");
@@ -281,13 +314,31 @@ public class PeerCommunicator extends Thread {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 	}
-	
+
 	/**
 	 * 
 	 */
 	public void requestPiece() {
-		
+
+	}
+	
+	/**
+	 * Sends a keep-alive message to the remote peer if the time between now
+	 * and the previous message exceeds the limit set by KEEP_ALIVE_TIMEOUT.
+	 * @throws Exception 
+	 */
+	protected void checkAndSendKeepAlive() throws Exception{
+		long now = System.currentTimeMillis();
+		if(now - this.lastMessageTime > KEEP_ALIVE_TIMEOUT){
+			// The "sendMessage" method should update lastMessageTime
+			new KeepAliveMessage().write(this.dataOut);
+			// Validate that the timestamp was updated
+			if(now > this.lastMessageTime){
+				throw new Exception("Didn't update lastMessageTime when sending a keep-alive!");
+			}
+			System.out.println("Sent Keep-Alive");
+		}
 	}
 }
