@@ -10,8 +10,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.lang.reflect.Array;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.logging.Logger;
 
@@ -46,16 +48,20 @@ public class PeerCommunicator extends Thread {
 	private String address;
 	private int port;
 	private byte[] infohash;
-	private byte[] myPeerID;
+	private byte[] myPeerId;
 	
-	private PeerCommunicator(byte[] peerId, String address, int port, byte[] infohash, byte[] myPeerID) {
+	private PeerCommunicator(byte[] peerId, String address, int port, byte[] infohash, byte[] myPeerId) {
 		this.peerId = peerId;
 		this.address = address;
 		this.port = port;
 		this.infohash = infohash;
-		this.myPeerID = myPeerID;
+		this.myPeerId = myPeerId;
 	}
 	
+	/**
+	 * 
+	 * @return the generated ID
+	 */
 	private byte[] generatePeerId() {
 		byte[] peerId = new byte[20];
 		
@@ -81,7 +87,6 @@ public class PeerCommunicator extends Thread {
 	private byte[] getHandshake() {
 		// Preallocate bytes for handshake
 		byte[] handshake = new byte[68];
-		int position = 0;
 		
 		// Header 19:BitTorrent protocol
 		// Begin with byte 19
@@ -93,9 +98,6 @@ public class PeerCommunicator extends Thread {
 		System.arraycopy(PROTOCOL, 0, handshake, 1, PROTOCOL.length);
 		
 		// 8 reserved bytes 20-27 are already initialized to 0; skip + omit commented-out code below
-//		// Add 8 reserved bytes which are set to 0
-//		byte[] reserved = new byte[8]; // Initialized to 0
-//		System.arraycopy(reserved, 0, handshake, 20, reserved.length);
 		
 		// Add infohash SHA-1 hash - not encoded
 		System.arraycopy(infohash, 0, handshake, 28, this.infohash.length);
@@ -103,19 +105,53 @@ public class PeerCommunicator extends Thread {
 		// Add peer id, which should match the infohash
 		System.arraycopy(peerId, 0, handshake, 48, this.peerId.length);	
 		
+		LOGGER.info("Generated handshake");
+		
 		return handshake;
 	}
 	
+	/**
+	 * Validate two handshakes for equality
+	 * 
+	 * @param myHandshake
+	 * @param otherHandshake
+	 * @return the truth value for the equality of the handshakes
+	 */
 	private boolean validateHandshake(byte[] myHandshake, byte[] otherHandshake) {
-		if (myHandshake == null || otherHandshake == null) {
-			
-		}
-		// check same length
-		// skip first 8 bytes
-		// check info hash
-		// check their peer ID
 		
-		return false;
+		if (myHandshake == null || otherHandshake == null) {
+			return false;
+		}
+		
+		if (myHandshake.length != otherHandshake.length) {
+			return false;
+		}
+		
+		// Skip header and reserved bytes
+		
+		// Check info hash
+		byte[] myInfoHash = new byte[20];
+		byte[] otherInfoHash = new byte[20];
+		
+		System.arraycopy(myHandshake, 28, myInfoHash, 0, 20);
+		System.arraycopy(otherHandshake, 28, otherInfoHash, 0, 20);
+		
+		if (!Arrays.equals(myInfoHash, otherInfoHash)) {
+			return false;
+		}
+		
+		// Check peer ID
+		byte[] myPeerId = new byte[20];
+		byte[] otherPeerId = new byte[20];
+		
+		System.arraycopy(myHandshake, 48, myPeerId, 0, 20);
+		System.arraycopy(otherHandshake, 48, otherPeerId, 0, 20);
+		
+		if (!Arrays.equals(myPeerId, otherPeerId)) {
+			return false;
+		}
+		
+		return true;
 	}
 	
 	/**
