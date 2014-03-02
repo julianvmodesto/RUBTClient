@@ -4,13 +4,10 @@ package edu.rutgers.cs.cs352.bt;
 
 import java.net.*;
 import java.io.*;
-import java.util.logging.Logger;
 
 public class RUBTClient {
 	
 	private static TorrentInfo torrent_info; //TorrentInfo object used for the program, created in main
-	
-	private final static Logger LOGGER = Logger.getLogger(RUBTClient.class.getName());
 
 	public static void main(String[] args) throws Exception {
 		
@@ -19,14 +16,16 @@ public class RUBTClient {
 			System.exit(1);
 		}
 		
-		String file_name = args[0];
-		File torrent_file = new File(file_name);
-		byte[] torrent_bytes = getFileInBytes(torrent_file, file_name); //calls getFileInBytes to change the torrent file into a byte array
+		String torrent_file_name = args[0];
+		File torrent_file = new File(torrent_file_name); //creates file for torrent
+		String download_file_name = args[1];
+		File download_file = new File(download_file_name); //creates file to save data to
 		
-		torrent_info = new TorrentInfo(torrent_bytes);
+		byte[] torrent_bytes = getFileInBytes(torrent_file, torrent_file_name); //calls getFileInBytes to change the torrent file into a byte array
+		
+		torrent_info = new TorrentInfo(torrent_bytes); //initializes the torrentInfo 
 				
-		RUBTClient client = new RUBTClient();
-		client.getRequest();
+		getRequest();
 	}
 	
 	/* Changes the torrent file into a byte array
@@ -79,7 +78,7 @@ public class RUBTClient {
 	/* Sends HTTP Get Request to 
 	 * the tracker
 	 */
-	public void getRequest() throws Exception{
+	public static void getRequest() throws Exception{
 		
 		String urlName = torrent_info.announce_url.toString(); //makes the URL of the torrentInfo object into a string
 		URL url = new URL(urlName); // new URL object made from the string announce_url
