@@ -3,17 +3,19 @@
  */
 package edu.rutgers.cs.cs352.bt;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 
 import edu.rutgers.cs.cs352.bt.RUBTClient;
 import edu.rutgers.cs.cs352.bt.RUBTClient.Event;
+import edu.rutgers.cs.cs352.bt.util.Bencoder2;
 /**
  * @author Gaurav Kumar
  *
@@ -62,9 +64,9 @@ public class TrackerCommunicator {
 		query += "&event=";
 		query += eventString;
 		
-		URI uri = new URI("http", null, urlName, port, eventString, eventString, eventString);
-		URL url = new URL(urlName); // new URL object made from the string announce_url
-		HttpURLConnection con = (HttpURLConnection) url.openConnection(); //open an HTTP connection
+		URI uri = new URI("http", null, urlName, port, null, query, null);
+		URL url = uri.toURL();
+		HttpURLConnection con = (HttpURLConnection) url.openConnection(); 
 		con.setRequestMethod("GET");
 		//response code used to find if connection was success or failure (and reason for failure)
 		int responseCode = con.getResponseCode();
@@ -80,8 +82,9 @@ public class TrackerCommunicator {
 			response.append(inputLine);
 		}
 		in.close();
-
+		byte[] response_bytes = response.toString().getBytes();
+		Map response_map = (Map) Bencoder2.decode(response_bytes);
 		//print result
-		System.out.println(response.toString());
+		System.out.println(response_map.toString());
 	}
 }
