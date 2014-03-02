@@ -110,8 +110,18 @@ public class PeerMessage {
 		if (this.length == 0) {
 			//writeByte
 		} else if (this.length > 1) {
-			//writePayload
+			dos.write(this.getType());
+			this.writePayload(os);
 		}
+		dos.flush();		
+	}
+	
+	/**
+	 * This method will be overwritten for messages with payloads
+	 * @param os the OutputStream
+	 * @throws IOException
+	 */
+	public void writePayload(OutputStream os) throws IOException {
 		
 	}
 	
@@ -125,6 +135,12 @@ public class PeerMessage {
 		
 		public int getPieceIndex() {
 			return this.pieceIndex;
+		}
+		
+		@Override
+		public void writePayload(OutputStream os) throws IOException {
+			DataOutputStream dos = new DataOutputStream(os);
+			dos.writeInt(this.pieceIndex);
 		}
 	}
 	
@@ -140,7 +156,8 @@ public class PeerMessage {
 			return this.bitField;
 		}
 		
-		public void write(OutputStream os) throws IOException {
+		@Override
+		public void writePayload(OutputStream os) throws IOException {
 			DataOutputStream dos = new DataOutputStream(os);
 			dos.write(this.bitField);
 		}
@@ -170,6 +187,7 @@ public class PeerMessage {
 			return this.blockLength;
 		}
 		
+		@Override
 		public void writePayload(OutputStream os) throws IOException {
 			DataOutputStream dos = new DataOutputStream(os);
 			dos.writeInt(this.pieceIndex);
@@ -203,6 +221,7 @@ public class PeerMessage {
 			return this.block;
 		}
 		
+		@Override
 		public void writePayload(OutputStream os) throws IOException {
 			DataOutputStream dos = new DataOutputStream(os);
 			dos.writeInt(this.pieceIndex);
