@@ -28,12 +28,10 @@ public class PeerCommunicator extends Thread {
 	private static final byte[] GROUP = {'G','P','1','6'};
 	
 	// Choked status and interested status of client and peer
-	// local client = us
-	// remote client = them
-	private boolean localChoked; 
-	private boolean remoteChoked;
-	private boolean localInterested;
-	private boolean remoteInterested;
+	private boolean amChoking; // this client is choking the peer
+	private boolean peerChoking; // peer is choking this client
+	private boolean amInterested; // this client is interested in the peer
+	private boolean peerInterested; // peer is interested in this client
 	
 	// Flag to keep the peer running
 	private boolean keepRunning;
@@ -56,10 +54,10 @@ public class PeerCommunicator extends Thread {
 		this.myPeerId = myPeerId;
 		
 		// Set default states
-		this.localChoked = true;
-		this.remoteChoked = true;
-		this.localInterested = false;
-		this.remoteInterested = false;
+		this.amChoking = true;
+		this.peerChoking = true;
+		this.amInterested = false;
+		this.peerInterested = false;
 	}
 	
 	/**
@@ -208,6 +206,8 @@ public class PeerCommunicator extends Thread {
 				}
 				
 				switch (message.getType()) {
+				case PeerMessage.TYPE_KEEP_ALIVE:
+					break;
 				case PeerMessage.TYPE_CHOKE:
 					break;
 				case PeerMessage.TYPE_UNCHOKE:

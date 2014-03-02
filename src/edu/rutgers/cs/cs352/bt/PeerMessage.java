@@ -33,6 +33,7 @@ public class PeerMessage {
 	}
 		
 	// Types
+	static final byte TYPE_KEEP_ALIVE = -1;
 	static final byte TYPE_CHOKE = 0;
 	static final byte TYPE_UNCHOKE = 1;
 	static final byte TYPE_INTERESTED = 2;
@@ -47,24 +48,23 @@ public class PeerMessage {
 		"bitField","request","piece","cancel"};
 	
 	// Messages
+	private static final PeerMessage MESSAGE_KEEP_ALIVE = new PeerMessage(0, TYPE_KEEP_ALIVE);
 	private static final PeerMessage MESSAGE_CHOKE = new PeerMessage(1, TYPE_CHOKE);
 	private static final PeerMessage MESSAGE_UNCHOKE = new PeerMessage(1, TYPE_UNCHOKE);
 	private static final PeerMessage MESSAGE_INTERESTED = new PeerMessage(1, TYPE_INTERESTED);
 	private static final PeerMessage MESSAGE_UNINTERESTED = new PeerMessage(1, TYPE_UNINTERESTED);
-	//private static final PeerMessage MESSAGE_HAVE = new PeerMessage(5, TYPE_HAVE);
-	//private static final PeerMessage MESSAGE_REQUEST = new PeerMessage(13, TYPE_REQUEST);
-	//private static final PeerMessage MESSAGE_PIECE = new PeerMessage(9, TYPE_PIECE);
 	
 	
 	public static PeerMessage read(InputStream is) throws IOException {
 		DataInputStream dis = new DataInputStream(is);
 		
+		// Read length
 		int length = dis.readInt();
-		
 		if (length == 0) {
-			// MESSAGE_KEEP_ALIVE
+			return MESSAGE_KEEP_ALIVE;
 		}
 		
+		// Read type
 		byte type = dis.readByte();
 		
 		int pieceIndex;
@@ -102,6 +102,7 @@ public class PeerMessage {
 	public void write(OutputStream os) throws IOException {
 		DataOutputStream dos = new DataOutputStream(os);
 		dos.writeInt(this.length);
+		dos.flush();
 		if (this.length == 0) {
 			//writeByte
 		} else if (this.length > 1) {
@@ -164,6 +165,7 @@ public class PeerMessage {
 			dos.writeInt(this.pieceIndex);
 			dos.writeInt(this.blockOffset);
 			dos.writeInt(this.blockLength);
+			dos.flush();
 		}
 		
 	}
