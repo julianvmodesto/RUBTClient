@@ -49,10 +49,10 @@ public class PeerCommunicator extends Thread {
 	private Socket socket;
 	private DataInputStream dataIn;
 	private DataOutputStream dataOut;
+	
+	private byte[] bitField;
 
 	private LinkedBlockingQueue<PeerMessage> peerMessages;
-	private LinkedBlockingQueue<RequestMessage> requestMessages;
-	private LinkedBlockingQueue<PieceMessage> pieceMessages;
 
 	// Set up timer
 	private static final long KEEP_ALIVE_TIMEOUT = 120000;
@@ -249,44 +249,39 @@ public class PeerCommunicator extends Thread {
 
 				switch (message.getType()) {
 				case PeerMessage.TYPE_KEEP_ALIVE:
-					peerMessages.add(message);
 					break;
 				case PeerMessage.TYPE_CHOKE:
-					peerMessages.add(message);
-
 					// Update internal state
 					this.peerChoking = true;
 
 					break;
 				case PeerMessage.TYPE_UNCHOKE:
-					peerMessages.add(message);
-
 					// Update internal state
 					this.peerChoking = false;
-
+					
+					if (this.amInterested) {
+						// send request message
+					}
+					
 					break;
 				case PeerMessage.TYPE_INTERESTED:
-					peerMessages.add(message);
-
 					// Update internal state
 					this.peerInterested = true;
+					
+					// send PeerMessage.MESSAGE_UNCHOKE
 
 					break;
 				case PeerMessage.TYPE_UNINTERESTED:
-					peerMessages.add(message);
-
 					// Update internal state
 					this.peerInterested = false;
-
 					break;
 				case PeerMessage.TYPE_HAVE:
-					peerMessages.add(message);
+					// inspect bit field
 					break;
 				case PeerMessage.TYPE_REQUEST:
-					requestMessages.add((RequestMessage) message);
+					// process request
 					break;
 				case PeerMessage.TYPE_PIECE:
-					pieceMessages.add((PieceMessage) message);
 					break;
 				}
 				//inspect bitfield
