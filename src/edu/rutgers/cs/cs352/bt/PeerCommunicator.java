@@ -50,6 +50,10 @@ public class PeerCommunicator extends Thread {
 	private DataInputStream dataIn;
 	private DataOutputStream dataOut;
 	
+	// Download
+	private int pieceIndex;
+	private int blockOffset;
+	
 	private byte[] bitField;
 
 	private LinkedBlockingQueue<PeerMessage> peerMessages;
@@ -236,9 +240,6 @@ public class PeerCommunicator extends Thread {
 				System.err.println("Error: handshake is incorrect.");
 			}
 
-			// Set peer ID
-			System.arraycopy(peerHandshake, 48, this.peerId, 0, 20);
-
 			// Main loop
 			while (this.keepRunning) {
 				// read message from socket
@@ -253,14 +254,13 @@ public class PeerCommunicator extends Thread {
 				case PeerMessage.TYPE_CHOKE:
 					// Update internal state
 					this.peerChoking = true;
-
 					break;
 				case PeerMessage.TYPE_UNCHOKE:
 					// Update internal state
 					this.peerChoking = false;
 					
 					if (this.amInterested) {
-						// send request message
+						this.sendPeerMessage(this.getRequestMessage());
 					}
 					
 					break;
@@ -268,7 +268,7 @@ public class PeerCommunicator extends Thread {
 					// Update internal state
 					this.peerInterested = true;
 					
-					// Send unchoke request
+					// Send unchoke
 					this.sendPeerMessage(PeerMessage.MESSAGE_UNCHOKE);
 					break;
 				case PeerMessage.TYPE_UNINTERESTED:
@@ -282,6 +282,7 @@ public class PeerCommunicator extends Thread {
 					// process request
 					break;
 				case PeerMessage.TYPE_PIECE:
+					
 					break;
 				}
 				//inspect bitfield
@@ -305,6 +306,18 @@ public class PeerCommunicator extends Thread {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+
+	private PeerMessage getRequestMessage() {
+		int pieceLength = RUBTClient.torrent_info.piece_length;
+		int totalPieces = RUBTClient.torrent_info.piece_hashes.length;
+		int fileLength = RUBTClient.torrent_info.file_length;
+		
+		int blockLength = PeerMessage.BLOCK_LENGTH;
+		
+		PeerMessage.RequestMessage requestMessage = new PeerMessage.RequestMessage(pieceIndex, blockOffset, blockLength);
+		
+		return null;
 	}
 
 	/**

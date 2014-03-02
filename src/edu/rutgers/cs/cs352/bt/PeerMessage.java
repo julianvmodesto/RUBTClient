@@ -16,6 +16,8 @@ import java.util.Arrays;
  */
 public class PeerMessage {
 	
+	public static final int BLOCK_LENGTH = 16000; // 16Kb
+	
 	private int length;
 	private byte type;
 	
@@ -31,7 +33,7 @@ public class PeerMessage {
 	public byte getType() {
 		return this.type;
 	}
-		
+	
 	// Types
 	static final byte TYPE_KEEP_ALIVE = -1;
 	static final byte TYPE_CHOKE = 0;
@@ -201,8 +203,7 @@ public class PeerMessage {
 			dos.writeInt(this.pieceIndex);
 			dos.writeInt(this.blockOffset);
 			dos.writeInt(this.blockLength);
-		}
-		
+		}		
 	}
 	
 	public static class PieceMessage extends PeerMessage {
