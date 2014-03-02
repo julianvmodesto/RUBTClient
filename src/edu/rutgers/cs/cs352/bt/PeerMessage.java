@@ -48,11 +48,11 @@ public class PeerMessage {
 		"bitField","request","piece","cancel"};
 	
 	// Messages
-	static final PeerMessage MESSAGE_KEEP_ALIVE = new PeerMessage(0, TYPE_KEEP_ALIVE);
-	static final PeerMessage MESSAGE_CHOKE = new PeerMessage(1, TYPE_CHOKE);
-	static final PeerMessage MESSAGE_UNCHOKE = new PeerMessage(1, TYPE_UNCHOKE);
-	static final PeerMessage MESSAGE_INTERESTED = new PeerMessage(1, TYPE_INTERESTED);
-	static final PeerMessage MESSAGE_UNINTERESTED = new PeerMessage(1, TYPE_UNINTERESTED);
+	private static final PeerMessage MESSAGE_KEEP_ALIVE = new PeerMessage(0, TYPE_KEEP_ALIVE);
+	private static final PeerMessage MESSAGE_CHOKE = new PeerMessage(1, TYPE_CHOKE);
+	private static final PeerMessage MESSAGE_UNCHOKE = new PeerMessage(1, TYPE_UNCHOKE);
+	private static final PeerMessage MESSAGE_INTERESTED = new PeerMessage(1, TYPE_INTERESTED);
+	private static final PeerMessage MESSAGE_UNINTERESTED = new PeerMessage(1, TYPE_UNINTERESTED);
 	
 	
 	public static PeerMessage read(InputStream is) throws IOException {
@@ -108,7 +108,7 @@ public class PeerMessage {
 		DataOutputStream dos = new DataOutputStream(os);
 		dos.writeInt(this.length);
 		if (this.length == 0) {
-			// Keep Alive
+			//writeByte
 		} else if (this.length > 1) {
 			dos.write(this.getType());
 			this.writePayload(os);
@@ -124,7 +124,7 @@ public class PeerMessage {
 	public void writePayload(OutputStream os) throws IOException {
 		
 	}
-
+	
 	public static class KeepAliveMessage extends PeerMessage {
 
 		public KeepAliveMessage() {
