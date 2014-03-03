@@ -54,13 +54,12 @@ public class TrackerCommunicator {
 		request += RUBTClient.left;
 		request += "&event=";
 		request += eventString;
-		System.out.println("");
+		System.out.println("GET Request: "+request);
 		URL url = new URL(request);
 		HttpURLConnection con = (HttpURLConnection) url.openConnection(); 
 		con.setRequestMethod("GET");
 		//response code used to find if connection was success or failure (and reason for failure)
 		int responseCode = con.getResponseCode();
-		System.out.println("HTTP response code:" + responseCode);
 
 		BufferedReader in = new BufferedReader(
 				new InputStreamReader(con.getInputStream()));
