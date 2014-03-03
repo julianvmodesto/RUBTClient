@@ -19,6 +19,7 @@ public class RUBTClient {
 	public static int downloaded = 0;
 	public static int left = 0;
 	public static int port = 6881;
+	public static int interval = 60;
 	
 	public static byte[] myPeerId;
 	
