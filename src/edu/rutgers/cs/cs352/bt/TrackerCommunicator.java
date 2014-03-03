@@ -33,7 +33,6 @@ public class TrackerCommunicator {
 		
 		String urlName = RUBTClient.torrent_info.announce_url.toString(); //makes the URL of the torrentInfo object into a string
 		String peerId = RUBTClient.myPeerId.toString();
-		String ip = InetAddress.getLocalHost().toString();
 		String downloaded = Integer.toString(RUBTClient.downloaded);
 		String left = Integer.toString(RUBTClient.left);
 		String eventString = event;
@@ -44,8 +43,6 @@ public class TrackerCommunicator {
 		request += URLEncoder.encode(RUBTClient.torrent_info.info_hash.array().toString(), "UTF-8");
 		request += "&peer_id=";
 		request += URLEncoder.encode(RUBTClient.myPeerId.toString(), "UTF-8");
-		request += "&ip=";
-		request += ip;
 		request += "&port=";
 		request += port;
 		request += "&downloaded=";
