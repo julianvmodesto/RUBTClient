@@ -3,6 +3,7 @@
  */
 package edu.rutgers.cs.cs352.bt;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -26,11 +27,16 @@ import edu.rutgers.cs.cs352.bt.util.ToolKit;
  *
  */
 public class TrackerCommunicator {
-	private static final byte[] BYTE_INTERVAL = {'i','n','t','e','r','v','a','l'};
-	private static final ByteBuffer KEY_INTERVAL = ByteBuffer.wrap(BYTE_INTERVAL);
-	private static final byte[] BYTE_PEERS = {'p','e','e','r','s'};
-	private static final ByteBuffer KEY_PEERS = ByteBuffer.wrap(BYTE_PEERS);
-
+	private static final byte[] BYTES_INTERVAL = {'i','n','t','e','r','v','a','l'};
+	private static final ByteBuffer KEY_INTERVAL = ByteBuffer.wrap(BYTES_INTERVAL);
+	private static final byte[] BYTES_PEERS = {'p','e','e','r','s'};
+	private static final ByteBuffer KEY_PEERS = ByteBuffer.wrap(BYTES_PEERS);
+	private static final byte[] BYTES_IP = {'i','p'};
+	private static final ByteBuffer KEYS_IP = ByteBuffer.wrap(BYTES_IP);
+	private static final byte[] BYTES_PEER_ID = {'p','e','e','r',' ','i','d'};
+	private static final ByteBuffer KEY_PEER_ID = ByteBuffer.wrap(BYTES_PEER_ID);
+	private static final byte[] BYTES_PORT = {'p','o','r','t'};
+	private static final ByteBuffer KEY_PORT = ByteBuffer.wrap(BYTES_PORT);
 	/**
 	 * @author Jeffrey Rocha, Gaurav Kumar
 	 * @throws Exception
@@ -72,11 +78,9 @@ public class TrackerCommunicator {
 		byte[] response_bytes = response.toString().getBytes();
 		HashMap response_map = (HashMap) Bencoder2.decode(response_bytes);
 		
-		ToolKit.print(response_map);
+		ArrayList peer_list = (ArrayList) response_map.get(KEY_PEERS);
 		
-		System.out.println(response_map.get(KEY_INTERVAL));
-		
-		ToolKit.print(response_map.get(KEY_PEERS));
+		ToolKit.print(peer_list);
 		
 		RUBTClient.left = 0;
 		RUBTClient.interval = (Integer) response_map.get(KEY_INTERVAL);
