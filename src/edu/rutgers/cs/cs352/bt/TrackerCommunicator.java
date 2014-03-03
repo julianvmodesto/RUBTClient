@@ -33,12 +33,7 @@ public class TrackerCommunicator {
 	 */
 	public static Map getRequest(int port, String event) throws Exception{
 
-		String urlName = RUBTClient.torrent_info.announce_url.toString(); //makes the URL of the torrentInfo object into a string
-		String peerId = RUBTClient.myPeerId.toString();
-		String downloaded = Integer.toString(RUBTClient.downloaded);
-		String left = Integer.toString(RUBTClient.left);
 		String eventString = event;
-		String query = "info_hash=";
 		String request = RUBTClient.torrent_info.announce_url.toString();
 		request += "?info_hash=";
 		String info_hash = "";
