@@ -189,7 +189,7 @@ public class PeerCommunicator extends Thread {
 		// Check that port number is within standard TCP range i.e. max port number is an unsigned, 16-bit short = 2^16 - 1 = 65535
 		if (port <= 0 | port >= 65535) {
 			System.err.println("Error: port number" + port + "is out of bounds");
-			return;
+			System.exit(1);
 		}
 
 		// Create socket
@@ -253,6 +253,10 @@ public class PeerCommunicator extends Thread {
 			if (!validateHandshake(peerHandshake)) {
 				System.err.println("Error: handshake is incorrect.");
 			}
+			
+			// Send an interested message upon validating the handshake
+			this.amInterested = true;
+			this.sendPeerMessage(PeerMessage.MESSAGE_INTERESTED);
 
 			// Main loop
 			while (this.keepRunning) {
@@ -295,8 +299,6 @@ public class PeerCommunicator extends Thread {
 					this.peerInterested = false;
 					break;
 				case PeerMessage.TYPE_BITFIELD:
-					this.amInterested = true;
-					this.sendPeerMessage(PeerMessage.MESSAGE_INTERESTED);
 					break;
 				case PeerMessage.TYPE_HAVE:
 					//TODO inspect bit field
@@ -364,6 +366,8 @@ public class PeerCommunicator extends Thread {
 		} catch (NoSuchAlgorithmException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			
+			shutdown();
 		}
 
 	}
