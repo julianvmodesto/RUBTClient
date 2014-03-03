@@ -12,6 +12,7 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLEncoder;
 
 import edu.rutgers.cs.cs352.bt.RUBTClient;
 import edu.rutgers.cs.cs352.bt.RUBTClient.Event;
@@ -30,7 +31,6 @@ public class TrackerCommunicator {
 	 */
 	public static Map getRequest(int port, String event) throws Exception{
 		
-		System.out.println("announce_url" + RUBTClient.torrent_info.announce_url.toString());
 		String urlName = RUBTClient.torrent_info.announce_url.toString(); //makes the URL of the torrentInfo object into a string
 		String peerId = RUBTClient.myPeerId.toString();
 		String ip = InetAddress.getLocalHost().toString();
@@ -40,9 +40,9 @@ public class TrackerCommunicator {
 		String query = "info_hash=";
 		
 		String request = RUBTClient.torrent_info.announce_url.toString();
-		request += RUBTClient.torrent_info.info_hash.toString();
+		request += URLEncoder.encode(RUBTClient.torrent_info.info_hash.toString(), "UTF-8");
 		request += "&peer_id=";
-		request += RUBTClient.myPeerId;
+		request += URLEncoder.encode(RUBTClient.myPeerId.toString(), "UTF-8");
 		request += "&ip=";
 		request += ip;
 		request += "&port=";
@@ -53,7 +53,6 @@ public class TrackerCommunicator {
 		request += RUBTClient.left;
 		request += "&event=";
 		request += eventString;
-		request = java.net.URLEncoder.encode(request, "UTF-8");
 		URL url = new URL(request);
 		HttpURLConnection con = (HttpURLConnection) url.openConnection(); 
 		con.setRequestMethod("GET");
