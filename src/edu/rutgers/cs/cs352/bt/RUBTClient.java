@@ -24,25 +24,31 @@ public class RUBTClient {
 	
 	public static void main(String[] args) throws Exception {
 		
+		// Check correct usage
 		if (args.length != 2) { // error for incorrect amount of args
 			System.err.println("Error: two arguments required");
 			System.exit(1);
 		}
 		
+		// Generate peer ID
 		myPeerId = generatePeerId();
 		
 		String torrent_file_name = args[0];
-		File torrent_file = new File(torrent_file_name); //creates file for torrent
+		//creates file for torrent
+		File torrent_file = new File(torrent_file_name);
 		String download_file_name = args[1];
-		File download_file = new File(download_file_name); //creates file to save data to
+		//creates file to save data to
+		File download_file = new File(download_file_name);
 		
-		byte[] torrent_bytes = getFileInBytes(torrent_file, torrent_file_name); //calls getFileInBytes to change the torrent file into a byte array
+		//calls getFileInBytes to change the torrent file into a byte array
+		byte[] torrent_bytes = getFileInBytes(torrent_file, torrent_file_name);
 		
 		torrent_info = new TorrentInfo(torrent_bytes); //initializes the torrentInfo
 		left = torrent_info.torrent_file_bytes.length;
 		String event = "started";
-		while (left > 0 && port <= 6889)		
+		while (left > 0 && port <= 6889) {
 			TrackerCommunicator.getRequest(port, event);
+		}
 		if (port > 6889){
 			System.err.println("There are no further ports available for use. Sorry.");
 			System.exit(1);
