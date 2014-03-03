@@ -14,6 +14,7 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 
 import edu.rutgers.cs.cs352.bt.RUBTClient;
@@ -25,8 +26,10 @@ import edu.rutgers.cs.cs352.bt.util.ToolKit;
  *
  */
 public class TrackerCommunicator {
-	private final static Logger LOGGER = Logger.getLogger(TrackerCommunicator.class.getName());
-	private static final byte[] GROUP = {'G','P','O','1','6'};
+	private static final byte[] BYTE_INTERVAL = {'i','n','t','e','r','v','a','l'};
+	private static final ByteBuffer KEY_INTERVAL = ByteBuffer.wrap(BYTE_INTERVAL);
+	private static final byte[] BYTE_PEERS = {'p','e','e','r','s'};
+	private static final ByteBuffer KEY_PEERS = ByteBuffer.wrap(BYTE_PEERS);
 
 	/**
 	 * @author Jeffrey Rocha, Gaurav Kumar
@@ -65,15 +68,18 @@ public class TrackerCommunicator {
 			response.append(inputLine);
 		}
 		in.close();
+		
 		byte[] response_bytes = response.toString().getBytes();
-		ToolKit.printMap(((Map)Bencoder2.decode(response_bytes)), 1);
+		HashMap response_map = (HashMap) Bencoder2.decode(response_bytes);
+		
+		ToolKit.print(response_map);
+		
+		System.out.println(response_map.get(KEY_INTERVAL));
+		
+		ToolKit.print(response_map.get(KEY_PEERS));
+		
 		RUBTClient.left = 0;
-		Map response_map = (Map)Bencoder2.decode(response_bytes);
-		Iterator it = response_map.entrySet().iterator();
-		while(it.hasNext()){
-			Map.Entry pairs = (Map.Entry)it.next();
-			System.out.println(pairs.getKey() + " and " + pairs.getValue());
-		}
+		RUBTClient.interval = (Integer) response_map.get(KEY_INTERVAL);
 	}
 	
 	private final static char[] HEX_CHARS = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
