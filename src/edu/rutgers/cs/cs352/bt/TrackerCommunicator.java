@@ -94,7 +94,7 @@ public class TrackerCommunicator {
 		// Search the peers for the peer ID beginning with RUBT bytes
 		for (HashMap peer_map : peer_list) {
 			
-			ToolKit.print(peer_map);
+			//ToolKit.print(peer_map);
 			
 			ByteBuffer peer_id_byte_buffer = (ByteBuffer) peer_map.get(KEY_PEER_ID);
 			byte[] peer_id = peer_id_byte_buffer.array();

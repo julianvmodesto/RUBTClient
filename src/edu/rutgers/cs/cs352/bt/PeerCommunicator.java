@@ -295,6 +295,7 @@ public class PeerCommunicator extends Thread {
 					break;
 				case PeerMessage.TYPE_PIECE:
 					
+					this.sendPeerMessage(this.getRequestMessage());
 					break;
 				}
 			}

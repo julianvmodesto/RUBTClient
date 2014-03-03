@@ -57,6 +57,10 @@ public class RUBTClient {
 		String event = "started";
 		peer_list = TrackerCommunicator.getRequest(myPort, event);
 		
+		// Start Peer
+		PeerCommunicator peer = new PeerCommunicator(peerId, ip, peerPort, RUBTClient.torrent_info.info_hash.array(), myPeerId);
+		peer.start();
+		
 		if (peerPort > 6889){
 			System.err.println("There are no further ports available for use. Sorry.");
 			System.exit(1);
