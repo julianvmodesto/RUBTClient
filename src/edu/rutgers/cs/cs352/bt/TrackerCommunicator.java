@@ -40,7 +40,8 @@ public class TrackerCommunicator {
 		String query = "info_hash=";
 		
 		String request = RUBTClient.torrent_info.announce_url.toString();
-		request += URLEncoder.encode(RUBTClient.torrent_info.info_hash.toString(), "UTF-8");
+		request += "?info_hash=";
+		request += URLEncoder.encode(RUBTClient.torrent_info.info_hash.array().toString(), "UTF-8");
 		request += "&peer_id=";
 		request += URLEncoder.encode(RUBTClient.myPeerId.toString(), "UTF-8");
 		request += "&ip=";
@@ -53,6 +54,7 @@ public class TrackerCommunicator {
 		request += RUBTClient.left;
 		request += "&event=";
 		request += eventString;
+		System.out.println("");
 		URL url = new URL(request);
 		HttpURLConnection con = (HttpURLConnection) url.openConnection(); 
 		con.setRequestMethod("GET");
