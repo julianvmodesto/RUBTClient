@@ -1,5 +1,5 @@
 /**
- * 
+ * Authors: Gaurav Kumar, Julian Modesto, Jeffrey Rocha
  */
 package edu.rutgers.cs.cs352.bt;
 
