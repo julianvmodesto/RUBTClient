@@ -1,9 +1,10 @@
 /**
- * 
+ * Authors: Gaurav Kumar, Julian Modesto, Jeffrey Rocha
  */
 package edu.rutgers.cs.cs352.bt;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.logging.Logger;
 import java.io.BufferedReader;
@@ -67,6 +68,12 @@ public class TrackerCommunicator {
 		byte[] response_bytes = response.toString().getBytes();
 		ToolKit.printMap(((Map)Bencoder2.decode(response_bytes)), 1);
 		RUBTClient.left = 0;
+		Map response_map = (Map)Bencoder2.decode(response_bytes);
+		Iterator it = response_map.entrySet().iterator();
+		while(it.hasNext()){
+			Map.Entry pairs = (Map.Entry)it.next();
+			System.out.println(pairs.getKey() + " and " + pairs.getValue());
+		}
 	}
 	
 	private final static char[] HEX_CHARS = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
