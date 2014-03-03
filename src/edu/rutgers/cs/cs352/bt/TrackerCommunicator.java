@@ -41,11 +41,12 @@ public class TrackerCommunicator {
 		
 		String request = RUBTClient.torrent_info.announce_url.toString();
 		request += "?info_hash=";
-		System.out.println("Infohash unencoded: " + RUBTClient.torrent_info.info_hash.array().toString());
-		request += URLEncoder.encode(RUBTClient.torrent_info.info_hash.array().toString(), "UTF-8");
-		System.out.println("Infohash encoded: "+ URLEncoder.encode(RUBTClient.torrent_info.info_hash.array().toString(), "UTF-8"));
+		request += URLEncoder.encode(new String(RUBTClient.torrent_info.info_hash.array(), "US-ASCII"), "US-ASCII");
 		request += "&peer_id=";
-		request += URLEncoder.encode(RUBTClient.myPeerId.toString(), "UTF-8");
+		request += URLEncoder.encode(new String(RUBTClient.myPeerId,"US-ASCII"), "US-ASCII");
+		
+		System.out.println("Infohash unencoded: " + RUBTClient.torrent_info.info_hash.array().toString());
+		System.out.println("Infohash encoded: "+ URLEncoder.encode(RUBTClient.torrent_info.info_hash.array().toString(), "UTF-8"));
 		request += "&port=";
 		request += port;
 		request += "&downloaded=";
