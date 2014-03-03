@@ -4,6 +4,7 @@
 package edu.rutgers.cs.cs352.bt;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -32,11 +33,14 @@ public class TrackerCommunicator {
 	private static final byte[] BYTES_PEERS = {'p','e','e','r','s'};
 	private static final ByteBuffer KEY_PEERS = ByteBuffer.wrap(BYTES_PEERS);
 	private static final byte[] BYTES_IP = {'i','p'};
-	private static final ByteBuffer KEYS_IP = ByteBuffer.wrap(BYTES_IP);
+	private static final ByteBuffer KEY_IP = ByteBuffer.wrap(BYTES_IP);
 	private static final byte[] BYTES_PEER_ID = {'p','e','e','r',' ','i','d'};
 	private static final ByteBuffer KEY_PEER_ID = ByteBuffer.wrap(BYTES_PEER_ID);
 	private static final byte[] BYTES_PORT = {'p','o','r','t'};
 	private static final ByteBuffer KEY_PORT = ByteBuffer.wrap(BYTES_PORT);
+	
+	private static final byte[] RUBT = {'R','U','B','T'};
+	
 	/**
 	 * @author Jeffrey Rocha, Gaurav Kumar
 	 * @throws Exception
@@ -47,9 +51,9 @@ public class TrackerCommunicator {
 		String request = RUBTClient.torrent_info.announce_url.toString();
 		
 		request += "?info_hash=";
-		request += byteToURL(RUBTClient.torrent_info.info_hash.array());
+		request += bytesToURL(RUBTClient.torrent_info.info_hash.array());
 		request += "&peer_id=";
-		request += byteToURL(RUBTClient.myPeerId);
+		request += bytesToURL(RUBTClient.myPeerId);
 		request += "&port=";
 		request += port;
 		request += "&downloaded=";
@@ -62,7 +66,9 @@ public class TrackerCommunicator {
 		URL url = new URL(request);
 		HttpURLConnection con = (HttpURLConnection) url.openConnection(); 
 		con.setRequestMethod("GET");
-		//response code used to find if connection was success or failure (and reason for failure)
+		
+		
+		// Response code used to find if connection was success or failure (and reason for failure)
 		int responseCode = con.getResponseCode();
 
 		BufferedReader in = new BufferedReader(
@@ -75,20 +81,56 @@ public class TrackerCommunicator {
 		}
 		in.close();
 		
+		// Decode bencoded dictionary from the tracker
 		byte[] response_bytes = response.toString().getBytes();
 		HashMap response_map = (HashMap) Bencoder2.decode(response_bytes);
 		
-		ArrayList peer_list = (ArrayList) response_map.get(KEY_PEERS);
+		// Get interval
+		RUBTClient.interval = (Integer) response_map.get(KEY_INTERVAL);
 		
-		ToolKit.print(peer_list);
+		
+		// Decode list of bencodeded dictionaries corresponding to peers
+		ArrayList<HashMap> peer_list = (ArrayList<HashMap>) response_map.get(KEY_PEERS);
+		// Search the peers for the peer ID beginning with RUBT bytes
+		for (HashMap peer_map : peer_list) {
+			
+			ByteBuffer peer_id_byte_buffer = (ByteBuffer) peer_map.get(KEY_PEER_ID);
+			byte[] peer_id = peer_id_byte_buffer.array();
+			
+			byte[] header = new byte[4];
+			
+			System.arraycopy(peer_id, 0, header, 0, 4);
+			
+			// Check if peer ID begins with RUBT bytes
+			if (Arrays.equals(header, RUBT)) {
+				// Found correct peer_id
+				
+				// Save peer's IP address
+				ByteBuffer ip_byte_buffer = (ByteBuffer) peer_map.get(KEY_IP);
+				String ip = new String(ip_byte_buffer.array(),"UTF-8");
+				
+				// Save port
+				RUBTClient.port = (Integer) peer_map.get(KEY_PORT);
+				
+				// Convert peer_id to string for printing
+				String peer_id_str = bytesToHexStr(peer_id); //TODO comment out
+				
+				System.out.println("---------------------------------------------------------------");
+				System.out.println("Found the peer to download from");
+				System.out.println("Peer ID in hex: " + peer_id_str);
+				System.out.println("IP: " + ip);
+				System.out.println("Port: " + RUBTClient.port);
+				System.out.println("---------------------------------------------------------------");
+			}
+		}
 		
 		RUBTClient.left = 0;
-		RUBTClient.interval = (Integer) response_map.get(KEY_INTERVAL);
+		
 	}
 	
 	private final static char[] HEX_CHARS = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 	
-	private static String byteToURL(byte[] byteArr) {
+	private static String bytesToHexStr(byte[] byteArr) {
 		
 		char[] charArr = new char[byteArr.length*2];
 		for(int i=0; i<byteArr.length; i++){
@@ -98,8 +140,16 @@ public class TrackerCommunicator {
 			charArr[charLoc+1]=HEX_CHARS[val&0x0F];
 		}
 		String hexString = new String(charArr);
+		
+		return hexString;
+	}
+		
+	private static String bytesToURL(byte[] byteArr) {
+
+		String hexString = bytesToHexStr(byteArr);
+				
 		int len = hexString.length();
-		charArr = new char[len+len/2];
+		char[] charArr = new char[len+len/2];
 		int i=0;
 		int j=0;
 		while(i<len){
