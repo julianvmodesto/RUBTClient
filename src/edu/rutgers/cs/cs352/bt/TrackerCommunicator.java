@@ -67,7 +67,9 @@ public class TrackerCommunicator {
 		byte[] response_bytes = response.toString().getBytes();
 		ToolKit.printMap(((Map)Bencoder2.decode(response_bytes)), 1);
 		RUBTClient.left = 0;
-		return (Map) Bencoder2.decode(response_bytes);
+		Map trackerDictionary = (Map) Bencoder2.decode(response_bytes);
+		RUBTClient.interval = 5;
+		
 	}
 	
 	private final static char[] HEX_CHARS = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
