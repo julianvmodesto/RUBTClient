@@ -46,7 +46,7 @@ public class PeerMessage {
 	static final byte TYPE_PIECE = 7;
 	static final byte TYPE_CANCEL = 8;
 	
-	private static final String[] TYPE_NAMES = {"choke","unchoke","interested","uninterested","have",
+	static final String[] TYPE_NAMES = {"choke","unchoke","interested","uninterested","have",
 		"bitField","request","piece","cancel"};
 	
 	// Messages

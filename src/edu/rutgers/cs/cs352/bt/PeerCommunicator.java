@@ -93,6 +93,8 @@ public class PeerCommunicator extends Thread {
 		this.pieceLength = RUBTClient.torrent_info.piece_length;
 		this.totalPieces = RUBTClient.torrent_info.piece_hashes.length;
 		this.fileLength = RUBTClient.torrent_info.file_length;
+		
+		this.keepRunning = true;
 	}
 	
 	private void shutdown() {
@@ -259,6 +261,8 @@ public class PeerCommunicator extends Thread {
 				if (message == null) {
 					System.err.println("Error: no message.");
 				}
+				
+				System.out.println("Received message: " + PeerMessage.TYPE_NAMES[message.getType()]);
 
 				switch (message.getType()) {
 				case PeerMessage.TYPE_KEEP_ALIVE:
@@ -286,6 +290,8 @@ public class PeerCommunicator extends Thread {
 				case PeerMessage.TYPE_UNINTERESTED:
 					// Update internal state
 					this.peerInterested = false;
+					break;
+				case PeerMessage.TYPE_BITFIELD:
 					break;
 				case PeerMessage.TYPE_HAVE:
 					//TODO inspect bit field
