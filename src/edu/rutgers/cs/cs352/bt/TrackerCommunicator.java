@@ -29,7 +29,8 @@ public class TrackerCommunicator {
 	 * @throws Exception
 	 */
 	public static Map getRequest(int port, String event) throws Exception{
-
+		
+		System.out.println("announce_url" + RUBTClient.torrent_info.announce_url.toString());
 		String urlName = RUBTClient.torrent_info.announce_url.toString(); //makes the URL of the torrentInfo object into a string
 		String peerId = RUBTClient.myPeerId.toString();
 		String ip = InetAddress.getLocalHost().toString();
@@ -37,22 +38,23 @@ public class TrackerCommunicator {
 		String left = Integer.toString(RUBTClient.left);
 		String eventString = event;
 		String query = "info_hash=";
-		query += RUBTClient.torrent_info.info_hash.toString();
-		query += "&peer_id=";
-		query += RUBTClient.myPeerId;
-		query += "&ip=";
-		query += ip;
-		query += "&port=";
-		query += port;
-		query += "&downloaded=";
-		query += RUBTClient.downloaded;
-		query += "&left=";
-		query += RUBTClient.left;
-		query += "&event=";
-		query += eventString;
 		
-		URI uri = new URI("http", null, urlName, port, null, query, null);
-		URL url = uri.toURL();
+		String request = RUBTClient.torrent_info.announce_url.toString();
+		request += RUBTClient.torrent_info.info_hash.toString();
+		request += "&peer_id=";
+		request += RUBTClient.myPeerId;
+		request += "&ip=";
+		request += ip;
+		request += "&port=";
+		request += port;
+		request += "&downloaded=";
+		request += RUBTClient.downloaded;
+		request += "&left=";
+		request += RUBTClient.left;
+		request += "&event=";
+		request += eventString;
+		request = java.net.URLEncoder.encode(request, "UTF-8");
+		URL url = new URL(request);
 		HttpURLConnection con = (HttpURLConnection) url.openConnection(); 
 		con.setRequestMethod("GET");
 		//response code used to find if connection was success or failure (and reason for failure)
