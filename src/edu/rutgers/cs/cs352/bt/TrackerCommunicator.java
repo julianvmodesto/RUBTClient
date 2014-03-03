@@ -31,7 +31,7 @@ public class TrackerCommunicator {
 	 * @author Jeffrey Rocha, Gaurav Kumar
 	 * @throws Exception
 	 */
-	public static Map getRequest(int port, String event) throws Exception{
+	public static void getRequest(int port, String event) throws Exception{
 
 		String eventString = event;
 		String request = RUBTClient.torrent_info.announce_url.toString();
@@ -67,9 +67,6 @@ public class TrackerCommunicator {
 		byte[] response_bytes = response.toString().getBytes();
 		ToolKit.printMap(((Map)Bencoder2.decode(response_bytes)), 1);
 		RUBTClient.left = 0;
-		Map trackerDictionary = (Map) Bencoder2.decode(response_bytes);
-		RUBTClient.interval = 5;
-		
 	}
 	
 	private final static char[] HEX_CHARS = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
