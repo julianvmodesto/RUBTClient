@@ -32,7 +32,7 @@ public class TrackerCommunicator {
 	 * @throws Exception
 	 */
 	public static Map getRequest(int port, String event) throws Exception{
-		
+
 		String urlName = RUBTClient.torrent_info.announce_url.toString(); //makes the URL of the torrentInfo object into a string
 		String peerId = RUBTClient.myPeerId.toString();
 		String downloaded = Integer.toString(RUBTClient.downloaded);
@@ -42,13 +42,29 @@ public class TrackerCommunicator {
 		String request = RUBTClient.torrent_info.announce_url.toString();
 		request += "?info_hash=";
 		String info_hash = "";
-		for (int i = 0; i < RUBTClient.myPeerId.length; i++){
-			System.out.print(RUBTClient.torrent_info.info_hash.array()[i] + "and");
-			info_hash += RUBTClient.torrent_info.info_hash.array()[i];
+		final char[] CHAR_FOR_BYTE = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
+		char[] store = new char[RUBTClient.torrent_info.info_hash.array().length*2];
+		for(int i=0; i<RUBTClient.torrent_info.info_hash.array().length; i++){
+			final int val = (RUBTClient.torrent_info.info_hash.array()[i]&0xFF);
+			final int charLoc=i<<1;
+			store[charLoc]=CHAR_FOR_BYTE[val>>>4];
+			store[charLoc+1]=CHAR_FOR_BYTE[val&0x0F];
 		}
+		String hexString = new String(store);
+		int len = hexString.length();
+		  char[] output = new char[len+len/2];
+		  int i=0;
+		  int j=0;
+		  while(i<len){
+		      output[j++]='%';
+		      output[j++]=hexString.charAt(i++);
+		      output[j++]=hexString.charAt(i++);
+		  }
+		  info_hash = new String(output);
+		
 		System.out.println("Infohash unencoded: " + RUBTClient.torrent_info.info_hash.array().toString());
 		System.out.println("Infohash encoded: "+ URLEncoder.encode(RUBTClient.torrent_info.info_hash.array().toString(), "UTF-8"));
-		request += URLEncoder.encode(info_hash, "US-ASCII");
+		request += info_hash;
 		request += "&peer_id=";
 		request += URLEncoder.encode(RUBTClient.myPeerId.toString(),"US-ASCII");
 		request += "&port=";
