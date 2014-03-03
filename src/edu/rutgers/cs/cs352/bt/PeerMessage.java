@@ -16,7 +16,7 @@ import java.util.Arrays;
  */
 public class PeerMessage {
 	
-	public static final int BLOCK_LENGTH = 16000; // 16Kb
+	public static final int BLOCK_LENGTH = 2^14; // 16Kb
 	
 	private int length;
 	private byte type;
