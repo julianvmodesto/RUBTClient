@@ -35,33 +35,11 @@ public class TrackerCommunicator {
 
 		String eventString = event;
 		String request = RUBTClient.torrent_info.announce_url.toString();
-		request += "?info_hash=";
-		String info_hash = "";
-		final char[] CHAR_FOR_BYTE = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
-		char[] store = new char[RUBTClient.torrent_info.info_hash.array().length*2];
-		for(int i=0; i<RUBTClient.torrent_info.info_hash.array().length; i++){
-			final int val = (RUBTClient.torrent_info.info_hash.array()[i]&0xFF);
-			final int charLoc=i<<1;
-			store[charLoc]=CHAR_FOR_BYTE[val>>>4];
-			store[charLoc+1]=CHAR_FOR_BYTE[val&0x0F];
-		}
-		String hexString = new String(store);
-		int len = hexString.length();
-		  char[] output = new char[len+len/2];
-		  int i=0;
-		  int j=0;
-		  while(i<len){
-		      output[j++]='%';
-		      output[j++]=hexString.charAt(i++);
-		      output[j++]=hexString.charAt(i++);
-		  }
-		  info_hash = new String(output);
 		
-		System.out.println("Infohash unencoded: " + RUBTClient.torrent_info.info_hash.array().toString());
-		System.out.println("Infohash encoded: "+ URLEncoder.encode(RUBTClient.torrent_info.info_hash.array().toString(), "UTF-8"));
-		request += info_hash;
+		request += "?info_hash=";
+		request += byteToURL(RUBTClient.torrent_info.info_hash.array());
 		request += "&peer_id=";
-		request += URLEncoder.encode(RUBTClient.myPeerId.toString(),"US-ASCII");
+		request += byteToURL(RUBTClient.myPeerId);
 		request += "&port=";
 		request += port;
 		request += "&downloaded=";
@@ -90,5 +68,29 @@ public class TrackerCommunicator {
 		ToolKit.printMap(((Map)Bencoder2.decode(response_bytes)), 1);
 		RUBTClient.left = 0;
 		return (Map) Bencoder2.decode(response_bytes);
+	}
+	
+	private final static char[] HEX_CHARS = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
+	
+	private static String byteToURL(byte[] byteArr) {
+		
+		char[] charArr = new char[byteArr.length*2];
+		for(int i=0; i<byteArr.length; i++){
+			final int val = (byteArr[i]&0xFF);
+			final int charLoc=i<<1;
+			charArr[charLoc]=HEX_CHARS[val>>>4];
+			charArr[charLoc+1]=HEX_CHARS[val&0x0F];
+		}
+		String hexString = new String(charArr);
+		int len = hexString.length();
+		charArr = new char[len+len/2];
+		int i=0;
+		int j=0;
+		while(i<len){
+			charArr[j++]='%';
+			charArr[j++]=hexString.charAt(i++);
+			charArr[j++]=hexString.charAt(i++);
+		}
+		return new String(charArr);
 	}
 }
