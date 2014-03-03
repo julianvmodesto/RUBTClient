@@ -6,8 +6,6 @@ package edu.rutgers.cs.cs352.bt;
 
 /* @author Jeffrey Rocha */
 
-import java.net.*;
-import java.nio.charset.Charset;
 import java.util.Random;
 import java.io.*;
 
@@ -30,7 +28,7 @@ public class RUBTClient {
 	public static void main(String[] args) throws Exception {
 		
 		// Check correct usage
-		if (args.length != 2) { // error for incorrect amount of args
+		if (args.length != 2) {
 			System.err.println("Error: two arguments required");
 			System.exit(1);
 		}
@@ -52,7 +50,7 @@ public class RUBTClient {
 		torrent_info = new TorrentInfo(torrent_bytes);
 		left = torrent_info.torrent_file_bytes.length;
 		String event = "started";
-		while (left > 0 && port <= 6889) {
+		while (left > 0 && port <= 6889) { //while still pieces to download and in a correct port
 			TrackerCommunicator.getRequest(port, event);
 		}
 		if (port > 6889){
@@ -65,6 +63,8 @@ public class RUBTClient {
 	 * Changes the torrent file into a byte array
 	 * used to create the TorrentInfo object
 	 * @author Robert Moore
+	 * @param torrent_file Torrent file about to be converted, 
+	 * @param file_name Name of torrent file
 	 * @return torrent file in byte array
 	 */
 	public static byte[] getFileInBytes(File torrent_file, String file_name){
