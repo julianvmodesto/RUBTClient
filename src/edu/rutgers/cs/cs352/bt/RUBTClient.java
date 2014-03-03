@@ -6,6 +6,7 @@ package edu.rutgers.cs.cs352.bt;
 
 /* @author Jeffrey Rocha */
 
+import java.util.ArrayList;
 import java.util.Random;
 import java.io.*;
 
@@ -22,7 +23,7 @@ public class RUBTClient {
 	public static int left = 0;
 	public static int myPort = 6881;
 	public static int interval = 60;
-	
+	public static ArrayList peer_list;
 	public static String ip;
 	public static int peerPort;
 	public static byte[] peerId;
@@ -54,7 +55,7 @@ public class RUBTClient {
 		torrent_info = new TorrentInfo(torrent_bytes);
 		left = torrent_info.torrent_file_bytes.length;
 		String event = "started";
-		TrackerCommunicator.getRequest(myPort, event);
+		peer_list = TrackerCommunicator.getRequest(myPort, event);
 		
 		if (peerPort > 6889){
 			System.err.println("There are no further ports available for use. Sorry.");
