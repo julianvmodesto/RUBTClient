@@ -45,6 +45,9 @@ public class TrackerCommunicator {
 		request += "&peer_id=";
 		request += URLEncoder.encode(RUBTClient.myPeerId.toString(),"US-ASCII");
 		
+		for (int i = 0; i < RUBTClient.myPeerId.length; i++){
+			System.out.print(RUBTClient.torrent_info.info_hash.array()[i] + "and");
+		}
 		System.out.println("Infohash unencoded: " + RUBTClient.torrent_info.info_hash.array().toString());
 		System.out.println("Infohash encoded: "+ URLEncoder.encode(RUBTClient.torrent_info.info_hash.array().toString(), "UTF-8"));
 		request += "&port=";
@@ -73,6 +76,7 @@ public class TrackerCommunicator {
 		in.close();
 		byte[] response_bytes = response.toString().getBytes();
 		ToolKit.printMap(((Map)Bencoder2.decode(response_bytes)), 1);
+		RUBTClient.left = 0;
 		return (Map) Bencoder2.decode(response_bytes);
 	}
 }
