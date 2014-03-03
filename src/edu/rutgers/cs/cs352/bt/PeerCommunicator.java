@@ -76,7 +76,7 @@ public class PeerCommunicator extends Thread {
 	private byte[] infohash;
 	private byte[] myPeerId;
 
-	private PeerCommunicator(byte[] peerId, String address, int port, byte[] infohash, byte[] myPeerId) {
+	public PeerCommunicator(byte[] peerId, String address, int port, byte[] infohash, byte[] myPeerId) {
 		this.peerId = peerId;
 		this.address = address;
 		this.port = port;
