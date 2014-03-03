@@ -100,50 +100,6 @@ public class RUBTClient {
 	}
 	
 	/**
-	 * Sends HTTP Get Request to 
-	 * the tracker
-	 * @author Jeffrey Rocha
-	 */
-	private static void getRequest() throws Exception{
-		
-		String torrent_hash = new String(torrent_info.info_hash.array(), Charset.forName("UTF-8"));
-		String torrent_peerId = new String(myPeerId, Charset.forName("UTF-8"));
-		String urlName = torrent_info.announce_url.toString();
-		
-		URL url; //Sets up the URL connection whether starting, completing, stopping, or going through the download
-		if (left == 0)
-			url = new URL(urlName + torrent_hash + torrent_peerId + port + uploaded + downloaded + left + Event.COMPLETED);
-		else if (uploaded == 0)
-			url = new URL(urlName + torrent_hash + torrent_peerId + port + uploaded + downloaded + left + Event.STARTED);
-		else if (downloaded == 0)
-			url = new URL(urlName + torrent_hash + torrent_peerId + port + uploaded + downloaded + left + Event.STOPPED);
-		else
-			url = new URL(urlName + torrent_hash + torrent_peerId + port + uploaded + downloaded + left);
-		
-		HttpURLConnection con = (HttpURLConnection) url.openConnection(); //open an HTTP connection
- 
-		con.setRequestMethod("GET");
- 
-		//response code used to find if connection was success or failure (and reason for failure)
-		int responseCode = con.getResponseCode();
-		System.out.println("\nSending 'GET' request to URL : " + url);
-		System.out.println("Response Code : " + responseCode);
- 
-		BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-		String inputLine;
-		StringBuffer response = new StringBuffer();
- 
-		while ((inputLine = in.readLine()) != null)
-			response.append(inputLine);
-		
-		in.close();
-		System.out.println(response.toString());
-		
-		if (responseCode == 404)
-			port++;
-	}
-	
-	/**
 	 * Generates the randomized peer ID with the first four bytes hard-coded with our group ID
 	 * 
 	 * @author Julian
