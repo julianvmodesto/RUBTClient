@@ -94,6 +94,8 @@ public class TrackerCommunicator {
 		// Search the peers for the peer ID beginning with RUBT bytes
 		for (HashMap peer_map : peer_list) {
 			
+			ToolKit.print(peer_map);
+			
 			ByteBuffer peer_id_byte_buffer = (ByteBuffer) peer_map.get(KEY_PEER_ID);
 			byte[] peer_id = peer_id_byte_buffer.array();
 			
@@ -111,7 +113,7 @@ public class TrackerCommunicator {
 				RUBTClient.ip = ip;
 				
 				// Save port
-				RUBTClient.port = (Integer) peer_map.get(KEY_PORT);
+				RUBTClient.peerPort = (Integer) peer_map.get(KEY_PORT);
 				
 				// Save peer_id
 				RUBTClient.peerId = peer_id;
@@ -122,8 +124,9 @@ public class TrackerCommunicator {
 				System.out.println("Found the peer to download from");
 				System.out.println("Peer ID in hex: " + peer_id_str);
 				System.out.println("IP: " + ip);
-				System.out.println("Port: " + RUBTClient.port);
+				System.out.println("Port: " + RUBTClient.peerPort);
 				System.out.println("---------------------------------------------------------------");
+				
 			}
 		}
 		

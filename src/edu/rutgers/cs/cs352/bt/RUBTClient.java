@@ -20,10 +20,11 @@ public class RUBTClient {
 	public static int uploaded = 0;
 	public static int downloaded = 0;
 	public static int left = 0;
-	public static int port = 6881;
+	public static int myPort = 6881;
 	public static int interval = 60;
 	
 	public static String ip;
+	public static int peerPort;
 	public static byte[] peerId;
 	
 	public static byte[] myPeerId;
@@ -53,10 +54,9 @@ public class RUBTClient {
 		torrent_info = new TorrentInfo(torrent_bytes);
 		left = torrent_info.torrent_file_bytes.length;
 		String event = "started";
-		while (left > 0 && port <= 6889) { //while still pieces to download and in a correct port
-			TrackerCommunicator.getRequest(port, event);
-		}
-		if (port > 6889){
+		TrackerCommunicator.getRequest(myPort, event);
+		
+		if (peerPort > 6889){
 			System.err.println("There are no further ports available for use. Sorry.");
 			System.exit(1);
 		}
