@@ -112,7 +112,10 @@ public class RUBTClient {
 		System.arraycopy(GROUP, 0, peerId, 0, GROUP.length);
 		
 		// Randomly generate remaining 16 bytes
-		new Random().nextBytes(peerId);
+		byte[] random = new byte[16];
+		new Random().nextBytes(random);
+		
+		System.arraycopy(random, 0, peerId, 4, random.length);
 		
 		return peerId;
 	}
