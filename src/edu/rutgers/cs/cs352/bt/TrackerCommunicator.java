@@ -45,7 +45,7 @@ public class TrackerCommunicator {
 	 * @author Jeffrey Rocha, Gaurav Kumar
 	 * @throws Exception
 	 */
-	public static void getRequest(int port, String event) throws Exception{
+	public static ArrayList getRequest(int port, String event) throws Exception{
 
 		String eventString = event;
 		String request = RUBTClient.torrent_info.announce_url.toString();
@@ -131,6 +131,7 @@ public class TrackerCommunicator {
 		}
 		
 		RUBTClient.left = 0;
+		return peer_list;
 		
 	}
 	
