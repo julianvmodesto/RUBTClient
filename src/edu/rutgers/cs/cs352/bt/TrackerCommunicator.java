@@ -108,10 +108,13 @@ public class TrackerCommunicator {
 				// Save peer's IP address
 				ByteBuffer ip_byte_buffer = (ByteBuffer) peer_map.get(KEY_IP);
 				String ip = new String(ip_byte_buffer.array(),"UTF-8");
+				RUBTClient.ip = ip;
 				
 				// Save port
 				RUBTClient.port = (Integer) peer_map.get(KEY_PORT);
 				
+				// Save peer_id
+				RUBTClient.peerId = peer_id;
 				// Convert peer_id to string for printing
 				String peer_id_str = bytesToHexStr(peer_id); //TODO comment out
 				

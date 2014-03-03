@@ -23,6 +23,9 @@ public class RUBTClient {
 	public static int port = 6881;
 	public static int interval = 60;
 	
+	public static String ip;
+	public static byte[] peerId;
+	
 	public static byte[] myPeerId;
 	
 	public static void main(String[] args) throws Exception {
