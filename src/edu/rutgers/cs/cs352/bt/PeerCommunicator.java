@@ -284,14 +284,19 @@ public class PeerCommunicator extends Thread {
 					// Update internal state
 					this.peerInterested = true;
 					
-					// Send unchoke
-					this.sendPeerMessage(PeerMessage.MESSAGE_UNCHOKE);
+					// Only send unchoke if not downloading
+					if (!amInterested) {
+						// Send unchoke
+						this.sendPeerMessage(PeerMessage.MESSAGE_UNCHOKE);
+					}
 					break;
 				case PeerMessage.TYPE_UNINTERESTED:
 					// Update internal state
 					this.peerInterested = false;
 					break;
 				case PeerMessage.TYPE_BITFIELD:
+					this.amInterested = true;
+					this.sendPeerMessage(PeerMessage.MESSAGE_INTERESTED);
 					break;
 				case PeerMessage.TYPE_HAVE:
 					//TODO inspect bit field
@@ -383,6 +388,8 @@ public class PeerCommunicator extends Thread {
 	}
 	
 	private void sendPeerMessage(PeerMessage peerMessage) throws IOException {
+		this.lastMessageTime = System.currentTimeMillis();
 		peerMessage.write(this.dataOut);
+		System.out.println("Sent " + PeerMessage.TYPE_NAMES[peerMessage.getType()] + " message to the peer.");
 	}
 }

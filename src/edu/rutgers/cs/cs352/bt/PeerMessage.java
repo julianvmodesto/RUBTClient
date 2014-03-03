@@ -115,7 +115,7 @@ public class PeerMessage {
 			dos.write(this.getType());
 			this.writePayload(os);
 		}
-		dos.flush();		
+		dos.flush();	
 	}
 	
 	/**
