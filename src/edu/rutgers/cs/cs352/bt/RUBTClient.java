@@ -34,16 +34,17 @@ public class RUBTClient {
 		myPeerId = generatePeerId();
 		
 		String torrent_file_name = args[0];
-		//creates file for torrent
+		// Creates file for torrent
 		File torrent_file = new File(torrent_file_name);
 		String download_file_name = args[1];
-		//creates file to save data to
+		// Creates file to save data to
 		File download_file = new File(download_file_name);
 		
-		//calls getFileInBytes to change the torrent file into a byte array
+		// Calls getFileInBytes to change the torrent file into a byte array
 		byte[] torrent_bytes = getFileInBytes(torrent_file, torrent_file_name);
 		
-		torrent_info = new TorrentInfo(torrent_bytes); //initializes the torrentInfo
+		// Initializes the torrentInfo
+		torrent_info = new TorrentInfo(torrent_bytes);
 		left = torrent_info.torrent_file_bytes.length;
 		String event = "started";
 		while (left > 0 && port <= 6889) {
