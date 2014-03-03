@@ -13,6 +13,7 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.security.MessageDigest;
 
 import edu.rutgers.cs.cs352.bt.RUBTClient;
 import edu.rutgers.cs.cs352.bt.RUBTClient.Event;
@@ -38,12 +39,11 @@ public class TrackerCommunicator {
 		String left = Integer.toString(RUBTClient.left);
 		String eventString = event;
 		String query = "info_hash=";
-		
 		String request = RUBTClient.torrent_info.announce_url.toString();
 		request += "?info_hash=";
-		request += URLEncoder.encode(new String(RUBTClient.torrent_info.info_hash.array(), "US-ASCII"), "US-ASCII");
+		request += URLEncoder.encode(RUBTClient.torrent_info.info_hash.array().toString(), "US-ASCII");
 		request += "&peer_id=";
-		request += URLEncoder.encode(new String(RUBTClient.myPeerId,"US-ASCII"), "US-ASCII");
+		request += URLEncoder.encode(RUBTClient.myPeerId.toString(),"US-ASCII");
 		
 		System.out.println("Infohash unencoded: " + RUBTClient.torrent_info.info_hash.array().toString());
 		System.out.println("Infohash encoded: "+ URLEncoder.encode(RUBTClient.torrent_info.info_hash.array().toString(), "UTF-8"));
