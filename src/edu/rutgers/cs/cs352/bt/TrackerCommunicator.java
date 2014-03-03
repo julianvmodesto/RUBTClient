@@ -17,6 +17,7 @@ import java.net.URLEncoder;
 import edu.rutgers.cs.cs352.bt.RUBTClient;
 import edu.rutgers.cs.cs352.bt.RUBTClient.Event;
 import edu.rutgers.cs.cs352.bt.util.Bencoder2;
+import edu.rutgers.cs.cs352.bt.util.ToolKit;
 /**
  * @author Gaurav Kumar
  *
@@ -26,7 +27,7 @@ public class TrackerCommunicator {
 	private static final byte[] GROUP = {'G','P','O','1','6'};
 
 	/**
-	 * @author Jeffrey Rocha
+	 * @author Jeffrey Rocha, Gaurav Kumar
 	 * @throws Exception
 	 */
 	public static Map getRequest(int port, String event) throws Exception{
@@ -68,6 +69,7 @@ public class TrackerCommunicator {
 		}
 		in.close();
 		byte[] response_bytes = response.toString().getBytes();
+		ToolKit.printMap(((Map)Bencoder2.decode(response_bytes)), 1);
 		return (Map) Bencoder2.decode(response_bytes);
 	}
 }
