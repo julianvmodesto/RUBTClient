@@ -10,14 +10,24 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Random;
+import java.util.TimerTask;
 
+import edu.rutgers.cs.cs352.bt.PeerMessage.KeepAliveMessage;
 import edu.rutgers.cs.cs352.bt.exceptions.BencodingException;
 import edu.rutgers.cs.cs352.bt.util.Bencoder2;
 import edu.rutgers.cs.cs352.bt.util.ToolKit;
 import edu.rutgers.cs.cs352.bt.util.Utility;
 
+/**
+ * 
+ * @author Gaurav Kumar
+ * @author Julian Modesto
+ * @author Jeffrey Rocha
+ */
 public class Tracker extends Thread {
 
 	/**
@@ -77,9 +87,9 @@ public class Tracker extends Thread {
 
 	private int downloaded;
 	private int left;
-
+	
+	
 	private int interval;
-	private int minInterval;
 	private String trackerId;
 	private ArrayList<HashMap<ByteBuffer, Object>> peerList;
 	private ArrayList<Peer> peers;
@@ -115,16 +125,46 @@ public class Tracker extends Thread {
 			this.left = this.torrentInfo.torrent_file_bytes.length;
 			this.downloaded = 0;
 			
-			// Build HTTP GET request as a string
-			String httpGETRequestString = getHTTPGETRequest("started");
-			System.out.println("GET Request: " + httpGETRequestString);
+			boolean isStarting = true;
 			
-			// Send HTTP GET request and get tracker response
-			byte[] response = getHTTPGETRequestResponse(httpGETRequestString);
+			String httpGETRequestString;
+			byte[] response; 
+			
+			while (true) {
+				
+				if (isStarting) {
+					// Build HTTP GET request as a string
+					httpGETRequestString = getHTTPGETRequest("started");
+					
+					isStarting = false;
+				} else if (this.left == 0) {
+					httpGETRequestString = getHTTPGETRequest("completed");
+					System.out.println("GET Request: " + httpGETRequestString);
+					
+					// Send HTTP GET request and get tracker response
+					response = getHTTPGETRequestResponse(httpGETRequestString);
+					
+					this.shutdown();
+					break;
+			    } else {
+			    	// Build HTTP GET request as a string
+					httpGETRequestString = getHTTPGETRequest("");			
+			    }
+				
+				System.out.println("GET Request: " + httpGETRequestString);
+				
+				// Send HTTP GET request and get tracker response
+				response = getHTTPGETRequestResponse(httpGETRequestString);
+				
+				// Get peer list
+				decodeTrackerResponse(response);
 
-			decodeTrackerResponse(response);
-
-			selectPeers();
+				// Connect to peers
+				selectPeers(this.peerList);
+				
+				System.out.println("Wait " + this.interval + " seconds to send announce");
+				sleep(this.interval*1000);
+			}
 
 		} catch (IOException ioe) {
 			System.err.println("Error: encountered I/O exception");
@@ -137,6 +177,19 @@ public class Tracker extends Thread {
 			System.err.println(ie.getMessage());
 		}
 
+	}
+	
+	/**
+	 * Shutsdown the tracker by sending a STOPPED tracker announce
+	 * @throws IOException
+	 */
+	private void shutdown() throws IOException {
+		// Build HTTP GET request as a string
+		String httpGETRequestString = getHTTPGETRequest("stopped");
+		System.out.println("GET Request: " + httpGETRequestString);
+		
+		// Send HTTP GET request and get tracker response
+		byte[] response = getHTTPGETRequestResponse(httpGETRequestString);
 	}
 
 	/**
@@ -174,8 +227,10 @@ public class Tracker extends Thread {
 		request += this.downloaded;
 		request += "&left=";
 		request += this.left;
-		request += "&event=";
-		request += event;
+		if (!event.isEmpty()) {
+			request += "&event=";
+			request += event;
+		}
 
 		return request;
 	}
@@ -207,6 +262,7 @@ public class Tracker extends Thread {
 
 	private void decodeTrackerResponse(byte[] response) throws BencodingException,
 			UnsupportedEncodingException {
+		@SuppressWarnings("unchecked")
 		HashMap<ByteBuffer, Object> responseMap = (HashMap<ByteBuffer, Object>) Bencoder2
 				.decode(response);
 
@@ -219,20 +275,22 @@ public class Tracker extends Thread {
 		}
 
 		// Catch warning message
+		/*
 		String warningMessage = (String) responseMap.get(KEY_WARNING_MESSAGE);
 		if (warningMessage != null) {
 			System.out.println("Warning:");
 			System.out.println(warningMessage);
 		}
+		*/
 
 		// Set interval
 		this.interval = (Integer) responseMap.get(KEY_INTERVAL);
 
 		// Set min interval
 		if (responseMap.get(KEY_MIN_INTERVAL) != null) {
-			this.minInterval = (Integer) responseMap.get(KEY_MIN_INTERVAL);
+			this.interval = (Integer) responseMap.get(KEY_MIN_INTERVAL);
 		} else {
-			this.minInterval = this.interval / 2;
+			this.interval = this.interval / 2;
 		}
 
 		// Set tracker id
@@ -243,9 +301,9 @@ public class Tracker extends Thread {
 				.get(KEY_PEERS);
 	}
 
-	private void selectPeers() throws UnsupportedEncodingException, InterruptedException {
+	private void selectPeers(ArrayList<HashMap<ByteBuffer, Object>> peerList) throws UnsupportedEncodingException, InterruptedException {
 		// Search the peers for the peer ID
-		for (HashMap<ByteBuffer, Object> peerMap : this.peerList) {
+		for (HashMap<ByteBuffer, Object> peerMap : peerList) {
 
 			// ToolKit.print(peerMap); // Print the map
 
@@ -264,19 +322,32 @@ public class Tracker extends Thread {
 				Integer peerPort = (Integer) peerMap.get(KEY_PORT);
 
 				// Start a new peer
-				Peer peer = new Peer(this, peerId, peerIP, peerPort);
-				this.peers.add(peer);
-				peer.run();
-				//TODO change to peer.start();
+				if (!isExistingPeer(peerId)) {
+					Peer peer = new Peer(this, peerId, peerIP, peerPort);
+					this.peers.add(peer);
+					peer.start();
+					//TODO change to peer.start();
 
-				System.out.println("Found a peer to download from");
-				System.out.println("\tPeer ID in hex: "
-						+ Utility.bytesToHexStr(peerId));
-				System.out.println("\tIP: " + peerIP);
-				System.out.println("\tPort: " + peerPort);
+					System.out.println("Found a peer to download from");
+					System.out.println("\tPeer ID in hex: "
+							+ Utility.bytesToHexStr(peerId));
+					System.out.println("\tIP: " + peerIP);
+					System.out.println("\tPort: " + peerPort);
+					break;
+					//TODO remove break to start multiple peers
+				}
 			}
 
 		}
+	}
+	
+	private boolean isExistingPeer(byte[] peerId) {
+		for (Peer p : this.peers) {
+			if (Arrays.equals(p.getPeerId(), peerId)) {
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	public byte[] getMyPeerId() {

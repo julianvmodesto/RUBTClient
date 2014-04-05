@@ -8,6 +8,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 /**
  * @author Julian Modesto
@@ -34,7 +35,7 @@ public class PeerMessage {
 	}
 	
 	// Types
-	static final byte TYPE_KEEP_ALIVE = -1;
+	static final byte TYPE_KEEP_ALIVE = 9;
 	static final byte TYPE_CHOKE = 0;
 	static final byte TYPE_UNCHOKE = 1;
 	static final byte TYPE_INTERESTED = 2;
@@ -46,7 +47,7 @@ public class PeerMessage {
 	static final byte TYPE_CANCEL = 8;
 	
 	static final String[] TYPE_NAMES = {"choke","unchoke","interested","uninterested","have",
-		"bitField","request","piece","cancel"};
+		"bitField","request","piece","cancel","keep alive"};
 	
 	// Messages
 	static final PeerMessage MESSAGE_KEEP_ALIVE = new PeerMessage(0, TYPE_KEEP_ALIVE);
@@ -109,12 +110,13 @@ public class PeerMessage {
 		DataOutputStream dos = new DataOutputStream(os);
 		dos.writeInt(this.length);
 		if (this.length == 0) {
-			//writeByte
+		} else if (this.length == 1) {
+			dos.writeInt(this.getType());
 		} else if (this.length > 1) {
-			dos.write(this.getType());
+			dos.writeInt(this.getType());
 			this.writePayload(os);
 		}
-		dos.flush();	
+		dos.flush();
 	}
 	
 	/**

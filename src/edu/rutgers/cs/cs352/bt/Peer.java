@@ -23,6 +23,13 @@ public class Peer extends Thread {
 	private Tracker tracker;
 
 	private byte[] peerId;
+	/**
+	 * @return the peerId
+	 */
+	public byte[] getPeerId() {
+		return peerId;
+	}
+
 	private String peerIP;
 	private int peerPort;
 
@@ -74,30 +81,41 @@ public class Peer extends Thread {
 		this.keepRunning = true;
 	}
 
-	private void shutdown() {
+	private void shutdown() throws IOException {
 		this.keepRunning = false;
+		
+		// The peer is done now, kill the timer
+		try { this.keepAliveTimer.cancel(); } catch(Exception e) { }
+
+		// Close IO streams
+		dataIn.close();
+		dataOut.flush();
+		dataOut.close();
+
+		// Close socket
+		socket.close();
 	}
-	
+
 	public void run() {
 		try {
 			// Connect
 			connect();
-			
+
 			/* Schedules a new anonymous implementation of a TimerTask that
-		     * will start now and execute every 10 seconds afterward.
-		     */
-		    this.keepAliveTimer.scheduleAtFixedRate(new TimerTask(){
-		      public void run(){
-		        // Let the peer figure out how/when to send a keep-alive
-		        try {
-					Peer.this.checkAndSendKeepAlive();
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+			 * will start now and execute every 10 seconds afterward.
+			 */
+			this.keepAliveTimer.scheduleAtFixedRate(new TimerTask(){
+				public void run(){
+					// Let the peer figure out how/when to send a keep-alive
+					try {
+						Peer.this.checkAndSendKeepAlive();
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
-		      }
-		    
-		    }, new Date(), 10000);
+
+			}, new Date(), 10000);
 
 			// Send handshake
 			byte[] myHandshake = getHandshake();
@@ -111,77 +129,81 @@ public class Peer extends Thread {
 			// Validate handshake
 			if (!validateHandshake(peerHandshake)) {
 				System.err.println("Error: handshake is incorrect.");
-			}
-			
-			// Send an interested message upon validating the handshake
-			this.amInterested = true;
-			this.sendPeerMessage(PeerMessage.MESSAGE_INTERESTED);
+			} else {
+				// Download
+				this.amInterested = true;
+				boolean isFirstHAVE = true;
 
-			// Main loop
-			while (this.keepRunning) {
-				// read message from socket
-				PeerMessage message = PeerMessage.read(this.dataIn);
-				if (message == null) {
-					System.err.println("Error: no message.");
-				}
-				
-				System.out.println("Received message: " + PeerMessage.TYPE_NAMES[message.getType()]);
+				// Main loop
+				while (this.keepRunning) {
+					// read message from socket
+					PeerMessage message = PeerMessage.read(this.dataIn);
+					if (message == null) {
+						System.err.println("Error: no message.");
+					}
 
-				switch (message.getType()) {
-				case PeerMessage.TYPE_KEEP_ALIVE:
-					break;
-				case PeerMessage.TYPE_CHOKE:
-					// Update internal state
-					this.peerChoking = true;
-					break;
-				case PeerMessage.TYPE_UNCHOKE:
-					// Update internal state
-					this.peerChoking = false;
-					
-					if (this.amInterested) {
+					System.out.println("Received message: " + PeerMessage.TYPE_NAMES[message.getType()]);
+
+					switch (message.getType()) {
+					case PeerMessage.TYPE_KEEP_ALIVE:
+						break;
+					case PeerMessage.TYPE_CHOKE:
+						// Update internal state
+						this.peerChoking = true;
+						break;
+					case PeerMessage.TYPE_UNCHOKE:
+						// Update internal state
+						this.peerChoking = false;
+
+						if (this.amInterested) {
+							this.sendPeerMessage(this.getRequestMessage());
+						}
+
+						break;
+					case PeerMessage.TYPE_INTERESTED:
+						// Update internal state
+						this.peerInterested = true;
+
+						// Only send unchoke if not downloading
+						if (!amInterested) {
+							// Send unchoke
+							this.sendPeerMessage(PeerMessage.MESSAGE_UNCHOKE);
+						}
+						break;
+					case PeerMessage.TYPE_UNINTERESTED:
+						// Update internal state
+						this.peerInterested = false;
+						break;
+					case PeerMessage.TYPE_BITFIELD:
+						if (isFirstHAVE) {
+							// Send an interested message upon receiving bit field
+							this.sendPeerMessage(PeerMessage.MESSAGE_INTERESTED);
+							isFirstHAVE = false;
+						}
+
+						//TODO inspect bit field and send a request
+						break;
+					case PeerMessage.TYPE_HAVE:
+						if (isFirstHAVE) {
+							// Send an interested message upon receiving first HAVE
+							this.sendPeerMessage(PeerMessage.MESSAGE_INTERESTED);
+							isFirstHAVE = false;
+						}
+
+						//TODO inspect bit field and send a request
+						break;
+					case PeerMessage.TYPE_REQUEST:
+						//TODO process request
+						break;
+					case PeerMessage.TYPE_PIECE:
+
 						this.sendPeerMessage(this.getRequestMessage());
+						break;
 					}
-					
-					break;
-				case PeerMessage.TYPE_INTERESTED:
-					// Update internal state
-					this.peerInterested = true;
-					
-					// Only send unchoke if not downloading
-					if (!amInterested) {
-						// Send unchoke
-						this.sendPeerMessage(PeerMessage.MESSAGE_UNCHOKE);
-					}
-					break;
-				case PeerMessage.TYPE_UNINTERESTED:
-					// Update internal state
-					this.peerInterested = false;
-					break;
-				case PeerMessage.TYPE_BITFIELD:
-					break;
-				case PeerMessage.TYPE_HAVE:
-					//TODO inspect bit field
-					break;
-				case PeerMessage.TYPE_REQUEST:
-					//TODO process request
-					break;
-				case PeerMessage.TYPE_PIECE:
-					
-					this.sendPeerMessage(this.getRequestMessage());
-					break;
 				}
 			}
-			
-			// The peer is done now, kill the timer
-		    try { this.keepAliveTimer.cancel(); } catch(Exception e) { }
 
-			// Close IO streams
-			dataIn.close();
-			dataOut.flush();
-			dataOut.close();
-
-			// Close socket
-			socket.close();
+			this.shutdown();
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -222,7 +244,7 @@ public class Peer extends Thread {
 
 		return handshake;
 	}
-	
+
 	/**
 	 * Validate two handshakes for equality
 	 * 
@@ -239,7 +261,7 @@ public class Peer extends Thread {
 		if (otherHandshake.length != 68) {
 			return false;
 		}
-		
+
 		// Check protocol
 		byte[] otherProtocol = new byte[19];
 		System.arraycopy(otherHandshake, 1, otherProtocol, 0, PROTOCOL.length);
@@ -255,7 +277,7 @@ public class Peer extends Thread {
 		if (!Arrays.equals(otherInfoHash, this.tracker.getInfoHash())) {
 			return false;
 		}
-		
+
 		// Check that peer ID is the same as from tracker
 		byte[] otherPeerId = new byte[20];
 		System.arraycopy(otherHandshake, 48, otherPeerId, 0, 20);
@@ -267,7 +289,7 @@ public class Peer extends Thread {
 
 		return true;
 	}
-	
+
 	private void connect() throws IOException {
 
 		// Check that port number is within standard TCP range i.e. max port number is an unsigned, 16-bit short = 2^16 - 1 = 65535
@@ -297,7 +319,7 @@ public class Peer extends Thread {
 		this.dataIn = new DataInputStream(socket.getInputStream());
 		this.dataOut = new DataOutputStream(socket.getOutputStream());
 	}
-	
+
 	/**
 	 * Returns the next request message to be sent to the peer,
 	 * based on the remaining pieces to be downloaded
@@ -307,39 +329,38 @@ public class Peer extends Thread {
 	 */
 	private PeerMessage getRequestMessage() {
 		PeerMessage.RequestMessage requestMessage;
-		
+
 		this.setPieceIndex();
-		
+
 		// Check if requesting last piece
 		if (this.pieceIndex == this.totalPieces - 1) {
 			// Request the last irregularly-sized piece
 			this.blockLength = this.fileLength % this.pieceLength;
 		}
-		
+
 		requestMessage = new PeerMessage.RequestMessage(this.pieceIndex, this.blockOffset, this.blockLength);
-		
+
 		this.blockOffset += this.pieceLength;
-		
+
 		return requestMessage;
 	}
-	
+
 	private void setPieceIndex() {
 		this.pieceIndex++;
 	}
 
-	public void verifyPiece(byte[] piece) {
+	public void verifyPiece(byte[] piece) throws IOException {
 		try {
 			MessageDigest sha = MessageDigest.getInstance("SHA-1");
 			byte[] hash = sha.digest(piece);
 		} catch (NoSuchAlgorithmException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			
 			shutdown();
 		}
 
 	}
-	
+
 	/**
 	 * Sends a keep-alive message to the remote peer if the time between now
 	 * and the previous message exceeds the limit set by KEEP_ALIVE_TIMEOUT.
@@ -349,8 +370,7 @@ public class Peer extends Thread {
 	protected void checkAndSendKeepAlive() throws Exception{
 		long now = System.currentTimeMillis();
 		if(now - this.lastMessageTime > KEEP_ALIVE_TIMEOUT){
-			// The "sendMessage" method should update lastMessageTime
-			new KeepAliveMessage().write(this.dataOut);
+			sendPeerMessage(new KeepAliveMessage());
 			// Validate that the timestamp was updated
 			if(now > this.lastMessageTime){
 				throw new Exception("Didn't update lastMessageTime when sending a keep-alive!");
@@ -358,10 +378,11 @@ public class Peer extends Thread {
 			System.out.println("Sent Keep-Alive");
 		}
 	}
-	
+
 	private void sendPeerMessage(PeerMessage peerMessage) throws IOException {
 		this.lastMessageTime = System.currentTimeMillis();
 		peerMessage.write(this.dataOut);
+
 		System.out.println("Sent " + PeerMessage.TYPE_NAMES[peerMessage.getType()] + " message to the peer.");
 	}
 }
