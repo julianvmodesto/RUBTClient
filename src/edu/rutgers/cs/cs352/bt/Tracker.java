@@ -77,7 +77,7 @@ public class Tracker extends Thread {
 	private String torrentFileName;
 	private String downloadFileName;
 	private RandomAccessFile torrentFile;
-	private RandomAccessFile downloadFile;
+	RandomAccessFile downloadFile;
 
 	private TorrentInfo torrentInfo;
 	private byte[] infoHash;
@@ -88,7 +88,8 @@ public class Tracker extends Thread {
 	private int downloaded;
 	private int left;
 	
-	
+	private byte[] myBitField;
+		
 	private int interval;
 	private String trackerId;
 	private ArrayList<HashMap<ByteBuffer, Object>> peerList;
@@ -326,7 +327,6 @@ public class Tracker extends Thread {
 					Peer peer = new Peer(this, peerId, peerIP, peerPort);
 					this.peers.add(peer);
 					peer.start();
-					//TODO change to peer.start();
 
 					System.out.println("Found a peer to download from");
 					System.out.println("\tPeer ID in hex: "
@@ -357,4 +357,47 @@ public class Tracker extends Thread {
 	public byte[] getInfoHash() {
 		return this.infoHash;
 	}
+	
+	/**
+	 * @return the downloaded
+	 */
+	public synchronized int getDownloaded() {
+		return downloaded;
+	}
+
+	/**
+	 * @param downloaded the downloaded to set
+	 */
+	public synchronized void setDownloaded(int downloaded) {
+		this.downloaded = downloaded;
+	}
+
+	/**
+	 * @return the left
+	 */
+	public synchronized int getLeft() {
+		return left;
+	}
+
+	/**
+	 * @param left the left to set
+	 */
+	public synchronized void setLeft(int left) {
+		this.left = left;
+	}
+
+	/**
+	 * @return the myBitField
+	 */
+	public synchronized byte[] getMyBitField() {
+		return myBitField;
+	}
+
+	/**
+	 * @param myBitField the myBitField to set
+	 */
+	public synchronized void setMyBitField(byte[] myBitField) {
+		this.myBitField = myBitField;
+	}
+
 }

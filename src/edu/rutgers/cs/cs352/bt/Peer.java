@@ -13,6 +13,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import edu.rutgers.cs.cs352.bt.PeerMessage.BitFieldMessage;
 import edu.rutgers.cs.cs352.bt.PeerMessage.KeepAliveMessage;
 
 public class Peer extends Thread {
@@ -175,12 +176,16 @@ public class Peer extends Thread {
 						this.peerInterested = false;
 						break;
 					case PeerMessage.TYPE_BITFIELD:
+						BitFieldMessage bitFieldMessage = (BitFieldMessage) message;
+						this.peerBitField = bitFieldMessage.getBitField();
+						System.out.println(Arrays.toString(this.peerBitField));
+						
 						if (isFirstHAVE) {
 							// Send an interested message upon receiving bit field
 							this.sendPeerMessage(PeerMessage.MESSAGE_INTERESTED);
 							isFirstHAVE = false;
 						}
-
+						
 						//TODO inspect bit field and send a request
 						break;
 					case PeerMessage.TYPE_HAVE:
@@ -196,7 +201,7 @@ public class Peer extends Thread {
 						//TODO process request
 						break;
 					case PeerMessage.TYPE_PIECE:
-
+												
 						this.sendPeerMessage(this.getRequestMessage());
 						break;
 					}
@@ -382,6 +387,7 @@ public class Peer extends Thread {
 	private void sendPeerMessage(PeerMessage peerMessage) throws IOException {
 		this.lastMessageTime = System.currentTimeMillis();
 		peerMessage.write(this.dataOut);
+		this.dataOut.flush();
 
 		System.out.println("Sent " + PeerMessage.TYPE_NAMES[peerMessage.getType()] + " message to the peer.");
 	}

@@ -47,7 +47,7 @@ public class PeerMessage {
 	static final byte TYPE_CANCEL = 8;
 	
 	static final String[] TYPE_NAMES = {"choke","unchoke","interested","uninterested","have",
-		"bitField","request","piece","cancel","keep alive"};
+		"bit field","request","piece","cancel","keep alive"};
 	
 	// Messages
 	static final PeerMessage MESSAGE_KEEP_ALIVE = new PeerMessage(0, TYPE_KEEP_ALIVE);
@@ -57,8 +57,7 @@ public class PeerMessage {
 	static final PeerMessage MESSAGE_UNINTERESTED = new PeerMessage(1, TYPE_UNINTERESTED);
 	
 	
-	public static PeerMessage read(InputStream is) throws IOException {
-		DataInputStream dis = new DataInputStream(is);
+	public static PeerMessage read(DataInputStream dis) throws IOException {
 		
 		// Read length
 		int length = dis.readInt();
@@ -106,17 +105,15 @@ public class PeerMessage {
 		return null;
 	}
 	
-	public void write(OutputStream os) throws IOException {
-		DataOutputStream dos = new DataOutputStream(os);
+	public void write(DataOutputStream dos) throws IOException {
 		dos.writeInt(this.length);
 		if (this.length == 0) {
 		} else if (this.length == 1) {
-			dos.writeInt(this.getType());
+			dos.writeByte(this.getType());
 		} else if (this.length > 1) {
-			dos.writeInt(this.getType());
-			this.writePayload(os);
+			dos.writeByte(this.getType());
+			this.writePayload(dos);
 		}
-		dos.flush();
 	}
 	
 	/**
@@ -124,7 +121,7 @@ public class PeerMessage {
 	 * @param os the OutputStream
 	 * @throws IOException
 	 */
-	public void writePayload(OutputStream os) throws IOException {
+	public void writePayload(DataOutputStream os) throws IOException {
 		
 	}
 	
@@ -149,8 +146,7 @@ public class PeerMessage {
 		}
 		
 		@Override
-		public void writePayload(OutputStream os) throws IOException {
-			DataOutputStream dos = new DataOutputStream(os);
+		public void writePayload(DataOutputStream dos) throws IOException {
 			dos.writeInt(this.pieceIndex);
 		}
 	}
@@ -168,8 +164,7 @@ public class PeerMessage {
 		}
 		
 		@Override
-		public void writePayload(OutputStream os) throws IOException {
-			DataOutputStream dos = new DataOutputStream(os);
+		public void writePayload(DataOutputStream dos) throws IOException {
 			dos.write(this.bitField);
 		}
 	}
@@ -199,8 +194,7 @@ public class PeerMessage {
 		}
 		
 		@Override
-		public void writePayload(OutputStream os) throws IOException {
-			DataOutputStream dos = new DataOutputStream(os);
+		public void writePayload(DataOutputStream dos) throws IOException {
 			dos.writeInt(this.pieceIndex);
 			dos.writeInt(this.blockOffset);
 			dos.writeInt(this.blockLength);
@@ -232,8 +226,7 @@ public class PeerMessage {
 		}
 		
 		@Override
-		public void writePayload(OutputStream os) throws IOException {
-			DataOutputStream dos = new DataOutputStream(os);
+		public void writePayload(DataOutputStream dos) throws IOException {
 			dos.writeInt(this.pieceIndex);
 			dos.writeInt(this.blockOffset);
 			dos.write(this.block);
