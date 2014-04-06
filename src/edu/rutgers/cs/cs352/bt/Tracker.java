@@ -60,43 +60,44 @@ public class Tracker extends Thread {
 	private static final ByteBuffer KEY_MIN_INTERVAL = ByteBuffer
 			.wrap(new byte[] { 'm', 'i', 'n', ' ', 'i', 'n', 't', 'e', 'r',
 					'v', 'a', 'l' });
-	
+
 	/**
 	 * Key to the tracker ID to be sent back on the next announcements.
 	 */
 	private static final ByteBuffer KEY_TRACKER_ID = ByteBuffer
 			.wrap(new byte[] { 't', 'r', 'a', 'c', 'k', 'e', 'r', ' ', 'i', 'd' });
-	
+
 	/**
-	 * Key for the number of peers, or seeders, with the complete file in the torrent.
+	 * Key for the number of peers, or seeders, with the complete file in the
+	 * torrent.
 	 */
 	private static final ByteBuffer KEY_COMPLETE = ByteBuffer.wrap(new byte[] {
 			'c', 'o', 'm', 'p', 'l', 'e', 't', 'e' });
-	
+
 	/**
 	 * Key for the number of non-seeder peers or leechers in the torrent.
 	 */
 	private static final ByteBuffer KEY_INCOMPLETE = ByteBuffer
 			.wrap(new byte[] { 'i', 'n', 'c', 'o', 'm', 'p', 'l', 'e', 't', 'e' });
-	
+
 	/**
 	 * Key to the peers in the torrent.
 	 */
 	private static final ByteBuffer KEY_PEERS = ByteBuffer.wrap(new byte[] {
 			'p', 'e', 'e', 'r', 's' });
-	
+
 	/**
 	 * Key to the peer's IP address.
 	 */
 	private static final ByteBuffer KEY_IP = ByteBuffer.wrap(new byte[] { 'i',
 			'p' });
-	
+
 	/**
 	 * Key to the peer's self-selected ID.
 	 */
 	private static final ByteBuffer KEY_PEER_ID = ByteBuffer.wrap(new byte[] {
 			'p', 'e', 'e', 'r', ' ', 'i', 'd' });
-	
+
 	/**
 	 * Key to the peer's port number
 	 */
@@ -248,25 +249,34 @@ public class Tracker extends Thread {
 		return peerId;
 	}
 
+	/**
+	 * Builds the HTTP GET request to send to the tracker and returns it as a
+	 * string.
+	 * 
+	 * @param event
+	 *            one of started, completed, stopped, or empty
+	 * @return the HTTP GET request
+	 */
 	private String getHTTPGETRequest(String event) {
-		String request = this.torrentInfo.announce_url.toString();
+		StringBuffer request = new StringBuffer();
 
-		request += "?info_hash=";
-		request += Utility.bytesToURL(this.infoHash);
-		request += "&peer_id=";
-		request += Utility.bytesToURL(this.myPeerId);
-		request += "&port=";
-		request += this.myPort;
-		request += "&downloaded=";
-		request += this.downloaded;
-		request += "&left=";
-		request += this.left;
+		request.append(this.torrentInfo.announce_url.toString());
+		request.append("?info_hash=");
+		request.append(Utility.bytesToURL(this.infoHash));
+		request.append("&peer_id=");
+		request.append(Utility.bytesToURL(this.myPeerId));
+		request.append("&port=");
+		request.append(this.myPort);
+		request.append("&downloaded=");
+		request.append(this.downloaded);
+		request.append("&left=");
+		request.append(this.left);
 		if (!event.isEmpty()) {
-			request += "&event=";
-			request += event;
+			request.append("&event=");
+			request.append(event);
 		}
 
-		return request;
+		return request.toString();
 	}
 
 	private byte[] getHTTPGETRequestResponse(String request) throws IOException {
@@ -433,27 +443,29 @@ public class Tracker extends Thread {
 	public synchronized void setMyBitField(byte[] myBitField) {
 		this.myBitField = myBitField;
 	}
-	
-	public void writePieceMessage(PieceMessage message) throws NoSuchAlgorithmException, IOException {
+
+	public void writePieceMessage(PieceMessage message)
+			throws NoSuchAlgorithmException, IOException {
 		int pieceIndex = message.getPieceIndex();
 		int blockOffset = message.getBlockOffset();
 		byte[] block = message.getBlock();
 		int blockLength = block.length;
-		
+
 		if (verifyPiece(pieceIndex, block)) {
 			this.downloadFile.write(block, blockOffset, blockLength);
 		}
-		
+
 	}
-	
-	
-	public boolean verifyPiece(int pieceIndex, byte[] block) throws IOException, NoSuchAlgorithmException {
+
+	public boolean verifyPiece(int pieceIndex, byte[] block)
+			throws IOException, NoSuchAlgorithmException {
 		byte[] hash = null;
-		
+
 		MessageDigest sha = MessageDigest.getInstance("SHA-1");
 		hash = sha.digest(block);
-	
-		if (Arrays.equals(this.torrentInfo.piece_hashes[pieceIndex].array(),hash)) {
+
+		if (Arrays.equals(this.torrentInfo.piece_hashes[pieceIndex].array(),
+				hash)) {
 			System.out.println("Piece verified.");
 			return true;
 		}
