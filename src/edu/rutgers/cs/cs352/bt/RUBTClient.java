@@ -15,8 +15,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import edu.rutgers.cs.cs352.bt.Message.BitFieldMessage;
-import edu.rutgers.cs.cs352.bt.Message.PieceMessage;
+import edu.rutgers.cs.cs352.bt.Message.HaveMessage;
 import edu.rutgers.cs.cs352.bt.Message.RequestMessage;
 import edu.rutgers.cs.cs352.bt.exceptions.BencodingException;
 import edu.rutgers.cs.cs352.bt.util.Utility;
@@ -200,7 +199,7 @@ public class RUBTClient extends Thread {
 		this.tInfo = tInfo;
 		this.outFileName = outFile;
 		this.tracker = new Tracker(this.peerId, this.tInfo.info_hash.array(),
-				this.tInfo.announce_url.toString(), this.port);
+				this.tInfo.announce_url.toString(), this.port, this);
 
 		this.downloaded = 0;
 		this.uploaded = 0;
@@ -283,13 +282,25 @@ public class RUBTClient extends Thread {
 					peer.setRemoteInterested(false);
 					break;
 				case Message.ID_BIT_FIELD:
-					//TODO inspect bit field and send a request
+					// Inspect bit field
+					if (amInterested(peer)) {
+						peer.sendMessage(Message.INTERESTED);
+						peer.setLocalInterested(true);
+					}
 					break;
 				case Message.ID_HAVE:
-					// Send an interested message upon receiving first HAVE
-					peer.sendMessage(Message.INTERESTED);
-
-					//TODO inspect bit field and send a request
+					HaveMessage haveMsg = (HaveMessage) msg;
+					
+					if (peer.getBitField() == null) {
+						
+						peer.initializeBitField(this.totalPieces);
+					}
+					peer.setBitField(haveMsg.getPieceIndex());
+					
+					if (amInterested(peer)) {
+						peer.sendMessage(Message.INTERESTED);
+						peer.setLocalInterested(true);
+					}
 					break;
 				case Message.ID_REQUEST:
 					//TODO process request
@@ -304,25 +315,44 @@ public class RUBTClient extends Thread {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+			} catch (NullPointerException npe) {
+				System.err.println("ERROR");
+				continue;
+				//TODO don't continue...
 			}
 		}
 
 		this.shutdown();
 	}
 
+	/**
+	 * Checks which new peers are not already connected (by peer ID) and tries to connect to those.
+	 * @param newPeers the list of potentially new peers from the tracker
+	 */
 	void addPeers(final List<Peer> newPeers) {
-		// TODO: Check which of newPeers are not already connected (peer ID) and try
-		// to connect to those
-
+		// Filter by IP address
 		for (Peer newPeer : newPeers) {
 			if ((newPeer.getIp().equals("128.6.171.130") || newPeer.getIp().equals("128.6.171.131")) && !this.peers.contains(newPeer)) {
 				this.peers.add(newPeer);
 				System.out.println("Connecting to new peer: " + newPeer);
-				newPeer.start(tasks);
+				newPeer.start();
 			}
 		}
 	}
 
+	/**
+	 * Puts a new task into the tasks queue for processing.
+	 * @param task
+	 */
+	public void putMessageTask(MessageTask task) {
+		try {
+			this.tasks.put(task);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
 	private void chooseAndRequestPiece(final Peer peer) throws IOException {
 		// TODO: Determine which piece to request from the remote peer, and tell the
 		// peer to "download" it.
@@ -333,6 +363,7 @@ public class RUBTClient extends Thread {
 		// Inspect bit field and choose piece
 		byte[] peerBitField = peer.getBitField();
 		for (pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
+			System.out.println("PIECES" + pieceIndex + "/" + totalPieces);
 			if (!Utility.isSetBit(this.myBitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
 				break;
 			}
@@ -350,8 +381,29 @@ public class RUBTClient extends Thread {
 		RequestMessage msg =  new RequestMessage(pieceIndex, blockOffset, blockLength);
 		peer.sendMessage(msg);
 	}
+	
+	/**
+	 * Determines whether the client is interested in downloading from the remote peer.
+	 * @param peer
+	 * @return
+	 */
+	private synchronized boolean amInterested(final Peer peer) {
+		// Inspect bit field and choose piece
+		byte[] peerBitField = peer.getBitField();
+		
+		for (int pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
+			if (!Utility.isSetBit(this.myBitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
+				return true;
+			}
+		}
+		return false;
+	}
 
+	/**
+	 * Gracefully shuts down the client;
+	 */
 	private void shutdown() {
+		System.out.println("Shutting down client.");
 		// Cancel any upcoming tracker announces
 		this.trackerTimer.cancel();
 		// Disconnect all peers

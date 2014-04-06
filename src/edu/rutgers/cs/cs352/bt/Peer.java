@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.LinkedBlockingQueue;
 
 import edu.rutgers.cs.cs352.bt.util.Utility;
 
@@ -60,16 +59,24 @@ public class Peer extends Thread {
 		Utility.setBit(this.bitField, bit);
 	}
 
-	public synchronized void initializedBitField(int totalPieces) {
-		this.bitField = new byte[totalPieces];
+	public synchronized void initializeBitField(int totalPieces) {
+		int bytes = (int) Math.ceil((double)totalPieces/8);
+		this.bitField = new byte[bytes];
+		
+		for (int i = 0; i < this.bitField.length; i++) {
+			this.bitField[i] = 0;
+		}
 	}
+	
+	private final RUBTClient client;
 
-	public Peer(byte[] peerId, String ip, Integer port, byte[] infoHash, byte[] clientId) {
+	public Peer(byte[] peerId, String ip, Integer port, byte[] infoHash, byte[] clientId, RUBTClient client) {
 		this.peerId = peerId;
 		this.ip = ip;
 		this.port = port;
 		this.infoHash = infoHash;
 		this.clientId = clientId;
+		this.client = client;
 	}
 
 	// Set default states
@@ -182,7 +189,8 @@ public class Peer extends Thread {
 	 */
 	private volatile boolean keepRunning = true;
 
-	public void start(LinkedBlockingQueue<MessageTask> tasks) {
+	@Override
+	public void run() {
 		try {
 			// Connect
 			connect();
@@ -222,10 +230,7 @@ public class Peer extends Thread {
 					try {
 						Message msg = Message.read(this.in);
 						System.out.println("Queued message: " + Message.ID_NAMES[msg.getId()]);
-						tasks.put(new MessageTask(this,msg));
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						continue;
+						this.client.putMessageTask(new MessageTask(this,msg));
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -272,15 +277,18 @@ public class Peer extends Thread {
 	 * Disconnects this peer.
 	 */
 	public void disconnect() {
-		// TODO: Disconnect the socket, catch all exceptions
+		// Disconnect the socket, close data streams, catch all exceptions
 		try {
 			this.socket.close();
 
+			this.in.close();
+			
 			this.out.flush();
 			this.out.close();
+			
+			System.out.println("Disconnected peer: " + this);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.err.println("Error: I/O exception encountered when disconnecting peer " + this);
 		}
 	}
 
@@ -393,7 +401,7 @@ public class Peer extends Thread {
 		// Add peer id, which should match the infohash
 		System.arraycopy(this.clientId, 0, handshake, 48, this.clientId.length);	
 
-		System.out.println("Generated handshake.");
+		System.out.println("Generated handshake for " + this);
 
 		return handshake;
 	}
@@ -439,7 +447,7 @@ public class Peer extends Thread {
 			return false;
 		}
 
-		System.out.println("Handshake validated.");
+		System.out.println("Handshake validated for " + this);
 
 		return true;
 	}

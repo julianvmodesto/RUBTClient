@@ -6,7 +6,7 @@ import java.io.RandomAccessFile;
 public class Utility {
 
 	private final static char[] HEX_CHARS = { '0', '1', '2', '3', '4', '5',
-			'6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+		'6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
 	/**
 	 * Converts a file into a byte array
@@ -64,28 +64,24 @@ public class Utility {
 		return new String(charArr);
 	}
 
-	/*
-	 * The following code is taken from Stack Overflow. The author has permitted
-	 * copying according to Creative Commons License. A copy of the license is
-	 * provided in legalcode.txt in the root folder of this project.
-	 * 
-	 * Author: Rohit Jain
-	 * Source URL:
-	 * http://stackoverflow.com/questions/18931283/checking-individual-bits-in-a-byte-array-in-java 
-	 * Date: September 21, 2013
-	 */
-	public static boolean isSetBit(byte[] arr, int bit) {
+
+
+	public static void setBit(byte[] arr, int bit) {		
 		int index = bit / 8; // Get the index of the array for the byte with
-								// this bit
+		// this bit
 		int bitPosition = bit % 8; // Position of this bit in a byte
 
-		return (arr[index] >> bitPosition & 1) == 1;
+		byte B = arr[index];
+
+		arr[index] = (byte) (B | (1 << bitPosition));
 	}
-	/* End code copied from Rohit Jain. */
-	
-	public static void setBit(byte[] arr, int bit) {
-		int index = bit / 8;
-		int bitPosition = bit % 8;
-		arr[index] = (byte) (arr[index] | (1 << bitPosition));
+
+	public static boolean isSetBit(byte[] data, int pos) {
+		int posByte = pos/8; 
+		int posBit = pos%8;
+		byte valByte = data[posByte];
+		int valInt = valByte>>(8-(posBit+1)) & 0x0001;
+		return valInt == 1;
 	}
+
 }

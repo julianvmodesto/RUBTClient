@@ -20,6 +20,8 @@ import edu.rutgers.cs.cs352.bt.util.Utility;
  *
  */
 public class Tracker {
+	private final RUBTClient client;
+	
 	/**
 	 * Key used to retrieve the request error message.
 	 */
@@ -105,11 +107,12 @@ public class Tracker {
 	 * @param announceUrl the announce URL of the tracker
 	 * @param port the listen port for the local client.
 	 */
-	public Tracker(final byte[] clientId, final byte[] infoHash, final String announceUrl, final int port){
+	public Tracker(final byte[] clientId, final byte[] infoHash, final String announceUrl, final int port, final RUBTClient client){
 		this.infoHash = infoHash;
 		this.clientId = clientId;
 		this.announceUrl = announceUrl;
 		this.port = port;
+		this.client = client;
 	}
 
 	/**
@@ -254,7 +257,7 @@ public class Tracker {
 			}
 
 			// Add new peer
-			Peer peer = new Peer(peerId, peerIP, peerPort, this.infoHash, this.clientId);
+			Peer peer = new Peer(peerId, peerIP, peerPort, this.infoHash, this.clientId, this.client);
 			peerList.add(peer);
 
 			System.out.println("Peer in torrent: " + peer);
