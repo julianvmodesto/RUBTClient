@@ -5,7 +5,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Date;
@@ -266,7 +265,7 @@ public class Peer extends Thread {
 	}
 
 	/**
-	 * Validate two handshakes for equality
+	 * Validate two handshakes for equality.
 	 * 
 	 * @param myHandshake
 	 * @param otherHandshake
@@ -278,6 +277,7 @@ public class Peer extends Thread {
 			return false;
 		}
 
+		// Verify the length
 		if (otherHandshake.length != 68) {
 			return false;
 		}
@@ -289,7 +289,7 @@ public class Peer extends Thread {
 			return false;
 		}
 
-		// Skip header and reserved bytes
+		// Skip reserved bytes
 
 		// Check info hash against info hash from .torrent file
 		byte[] otherInfoHash = new byte[20];
