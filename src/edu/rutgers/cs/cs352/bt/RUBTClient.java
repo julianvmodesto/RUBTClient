@@ -19,6 +19,7 @@ import edu.rutgers.cs.cs352.bt.Message.BitFieldMessage;
 import edu.rutgers.cs.cs352.bt.Message.PieceMessage;
 import edu.rutgers.cs.cs352.bt.Message.RequestMessage;
 import edu.rutgers.cs.cs352.bt.exceptions.BencodingException;
+import edu.rutgers.cs.cs352.bt.util.Utility;
 
 /**
  * Main class for RUBTClient. After starting, spends its time listening on the
@@ -58,7 +59,7 @@ public class RUBTClient extends Thread {
 			System.err.println("Error: corrupt torrent metainfo file");
 			System.exit(1);
 		}
-		
+
 		TorrentInfo tInfo = null;
 		try {
 			tInfo = new TorrentInfo(metaBytes);
@@ -70,7 +71,7 @@ public class RUBTClient extends Thread {
 		RUBTClient client;
 		try {
 			client = new RUBTClient(tInfo, args[1]);
-			
+
 			// Launches the client as a thread
 			client.start();
 		} catch (IOException ioe) {
@@ -78,7 +79,16 @@ public class RUBTClient extends Thread {
 		}
 	}
 
+	/**
+	 * The block size that will be requested, 16K.
+	 */
+	public static final int BLOCK_LENGTH = 2 ^ 14; // = 16Kb
+	// We should be requesting 16K blocks, while pieces are 32 blocks
+
 	private final TorrentInfo tInfo;
+	private final int totalPieces;
+	private final int fileLength;
+	private final int pieceLength;
 	private final String outFileName;
 	private RandomAccessFile outFile;
 	private final LinkedBlockingQueue<MessageTask> tasks = new LinkedBlockingQueue<MessageTask>();
@@ -92,45 +102,44 @@ public class RUBTClient extends Thread {
 	private static final byte[] BYTES_GROUP = { 'G', 'P', '1', '6' };
 
 	private int port = 6881;
-	
+
 	private byte[] myBitField;
-	private int numPieces;
-	
+
 	private int downloaded;
 	private int uploaded;
 	private int left;
 	/**
 	 * @return the downloaded
 	 */
-	public synchronized int getDownloaded() {
+	public int getDownloaded() {
 		return downloaded;
 	}
 
 	/**
 	 * @param downloaded the downloaded to set
 	 */
-	public synchronized void setDownloaded(int downloaded) {
+	public void setDownloaded(int downloaded) {
 		this.downloaded = downloaded;
 	}
 
 	/**
 	 * @return the uploaded
 	 */
-	public synchronized int getUploaded() {
+	public int getUploaded() {
 		return uploaded;
 	}
 
 	/**
 	 * @param uploaded the uploaded to set
 	 */
-	public synchronized void setUploaded(int uploaded) {
+	public void setUploaded(int uploaded) {
 		this.uploaded = uploaded;
 	}
 
 	/**
 	 * @return the left
 	 */
-	public synchronized int getLeft() {
+	public int getLeft() {
 		return left;
 	}
 
@@ -192,10 +201,14 @@ public class RUBTClient extends Thread {
 		this.outFileName = outFile;
 		this.tracker = new Tracker(this.peerId, this.tInfo.info_hash.array(),
 				this.tInfo.announce_url.toString(), this.port);
-		
+
 		this.downloaded = 0;
 		this.uploaded = 0;
 		this.left = this.tInfo.file_length;
+
+		this.totalPieces = this.tInfo.piece_hashes.length;
+		this.fileLength = this.tInfo.file_length;
+		this.pieceLength = this.tInfo.piece_length;
 	}
 
 	@Override
@@ -226,8 +239,7 @@ public class RUBTClient extends Thread {
 			// Schedule the first "regular" announce - the rest are schedule by the
 			// task itself
 			int interval = this.tracker.getInterval();
-			this.trackerTimer
-			.schedule(new TrackerAnnounceTask(this), interval * 1000);
+			this.trackerTimer.schedule(new TrackerAnnounceTask(this), interval * 1000);
 		}
 
 		// Main loop:
@@ -301,11 +313,12 @@ public class RUBTClient extends Thread {
 	void addPeers(final List<Peer> newPeers) {
 		// TODO: Check which of newPeers are not already connected (peer ID) and try
 		// to connect to those
-		
+
 		for (Peer newPeer : newPeers) {
 			if ((newPeer.getIp().equals("128.6.171.130") || newPeer.getIp().equals("128.6.171.131")) && !this.peers.contains(newPeer)) {
 				this.peers.add(newPeer);
 				System.out.println("Connecting to new peer: " + newPeer);
+				newPeer.start(tasks);
 			}
 		}
 	}
@@ -315,13 +328,24 @@ public class RUBTClient extends Thread {
 		// peer to "download" it.
 		int pieceIndex;
 		int blockOffset;
+		int blockLength;
+
+		// Inspect bit field and choose piece
+		byte[] peerBitField = peer.getBitField();
+		for (pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
+			if (!Utility.isSetBit(this.myBitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
+				break;
+			}
+		}
 		
+		blockOffset = pieceIndex * this.pieceLength;
+
 		// Check if requesting last piece
 		if (pieceIndex == totalPieces - 1) {
 			// Request the last irregularly-sized piece
-			blockLength = fileLength % pieceLength;
+			blockLength = fileLength % this.pieceLength;
 		} else {
-			blockLength = pieceLength;
+			blockLength = this.pieceLength;
 		}
 		RequestMessage msg =  new RequestMessage(pieceIndex, blockOffset, blockLength);
 		peer.sendMessage(msg);

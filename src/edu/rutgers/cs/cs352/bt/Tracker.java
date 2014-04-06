@@ -254,7 +254,7 @@ public class Tracker {
 			}
 
 			// Add new peer
-			Peer peer = new Peer(peerId, peerIP, peerPort);
+			Peer peer = new Peer(peerId, peerIP, peerPort, this.infoHash, this.clientId);
 			peerList.add(peer);
 
 			System.out.println("Peer in torrent: " + peer);

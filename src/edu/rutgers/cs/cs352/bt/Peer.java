@@ -1,9 +1,15 @@
 package edu.rutgers.cs.cs352.bt;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import edu.rutgers.cs.cs352.bt.util.Utility;
 
@@ -11,14 +17,20 @@ import edu.rutgers.cs.cs352.bt.util.Utility;
  * @author Robert Moore
  *
  */
-public class Peer {
-	
-	private byte[] id;
+public class Peer extends Thread {
+
+	private static final byte[] BYTES_PROTOCOL = { 'B', 'i', 't', 'T', 'o', 'r', 'r',
+		'e', 'n', 't', ' ', 'p', 'r', 'o', 't', 'o', 'c', 'o', 'l' };
+
+	private byte[] peerId;
+	private final byte[] infoHash;
+	private final byte[] clientId;
+
 	/**
 	 * @return the peer ID
 	 */
-	public byte[] getId() {
-		return id;
+	public byte[] getPeerId() {
+		return peerId;
 	}
 
 	private String ip;
@@ -28,13 +40,36 @@ public class Peer {
 	public String getIp() {
 		return ip;
 	}
-	
+
 	private int port;
-	
-	public Peer(byte[] peerId, String ip, Integer port) {
-		this.id = id;
+	private Socket socket;
+
+	private byte[] bitField;
+
+	/**
+	 * @return the bitField
+	 */
+	public synchronized byte[] getBitField() {
+		return bitField;
+	}
+
+	/**
+	 * @param bit the bit to set
+	 */
+	public synchronized void setBitField(int bit) {
+		Utility.setBit(this.bitField, bit);
+	}
+
+	public synchronized void initializedBitField(int totalPieces) {
+		this.bitField = new byte[totalPieces];
+	}
+
+	public Peer(byte[] peerId, String ip, Integer port, byte[] infoHash, byte[] clientId) {
+		this.peerId = peerId;
 		this.ip = ip;
 		this.port = port;
+		this.infoHash = infoHash;
+		this.clientId = clientId;
 	}
 
 	// Set default states
@@ -57,6 +92,7 @@ public class Peer {
 	 */
 	private boolean remoteChoked=true;
 
+	private DataInputStream in = null;
 	private DataOutputStream out = null;
 
 	/**
@@ -74,7 +110,7 @@ public class Peer {
 	public boolean amChoked(){
 		return this.localChoked;
 	}
-	
+
 	/**
 	 * Returns the current Interested state of the REMOTE CLIENT.
 	 * @return {@code true} if the REMOTE CLIENT is interested in the LOCAL PEER's pieces
@@ -90,7 +126,7 @@ public class Peer {
 	public boolean remoteChoked(){
 		return this.localChoked;
 	}
-	
+
 	/**
 	 * @param localInterested the localInterested to set
 	 */
@@ -134,11 +170,102 @@ public class Peer {
 			throw new IOException("Output stream is null, cannot write message to " + this);
 		}
 		msg.write(this.out);
-		
+
 		// Update timestamp for keep-alive message timer
 		this.lastMessageTime = System.currentTimeMillis();
-		
+
 		System.out.println("Sent " + Message.ID_NAMES[msg.getId()] + " message to the peer.");
+	}
+
+	/**
+	 * Flag to keep the main loop running. Once false, the peer *should* exit.
+	 */
+	private volatile boolean keepRunning = true;
+
+	public void start(LinkedBlockingQueue<MessageTask> tasks) {
+		try {
+			// Connect
+			connect();
+
+			/* Schedules a new anonymous implementation of a TimerTask that
+			 * will start now and execute every 10 seconds afterward.
+			 */
+			this.keepAliveTimer.scheduleAtFixedRate(new TimerTask(){
+				public void run(){
+					// Let the peer figure out how/when to send a keep-alive
+					try {
+						Peer.this.checkAndSendKeepAlive();
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+
+			}, new Date(), 10000);
+
+			// Send handshake
+			byte[] myHandshake = getHandshake();
+			this.out.write(myHandshake);
+			this.out.flush();
+
+			// Read response
+			byte[] peerHandshake = new byte[68];
+			in.readFully(peerHandshake);
+
+			// Validate handshake
+			if (!validateHandshake(peerHandshake)) {
+				System.err.println("Error: handshake is incorrect.");
+				this.disconnect();
+			} else {
+				while (this.keepRunning) {
+					// read message from socket
+					try {
+						Message msg = Message.read(this.in);
+						System.out.println("Queued message: " + Message.ID_NAMES[msg.getId()]);
+						tasks.put(new MessageTask(this,msg));
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						continue;
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+			}
+
+		} catch (IOException ioe) {
+			// TODO Auto-generated catch block
+			ioe.printStackTrace();
+		} finally {
+			this.disconnect();
+		}
+	}
+
+	/**
+	 * Connects this peer.
+	 * @throws IOException 
+	 */
+	public void connect() throws IOException {
+		// Create socket
+		socket = null;
+		try {
+			socket = new Socket(this.ip, this.port);
+		} catch (UnknownHostException uhe) {
+			System.err.println("Error: the IP address of the host could not be determined from " + this.ip + ".");
+			System.err.println(uhe.getMessage());
+		} catch (IOException ioe) {
+			System.err.println("Error: an I/O error occurred.");
+			System.err.println(ioe.getMessage());
+		}
+
+		// Check if connected once but not closed
+		if (socket == null && !socket.isClosed()) {
+			System.err.println("Error: socket connected once but not closed.");
+		}
+
+		// Open IO streams
+		this.in = new DataInputStream(socket.getInputStream());
+		this.out = new DataOutputStream(socket.getOutputStream());
 	}
 
 	/**
@@ -146,9 +273,9 @@ public class Peer {
 	 */
 	public void disconnect() {
 		// TODO: Disconnect the socket, catch all exceptions
-		
-		// Close data streams
 		try {
+			this.socket.close();
+
 			this.out.flush();
 			this.out.close();
 		} catch (IOException e) {
@@ -156,7 +283,7 @@ public class Peer {
 			e.printStackTrace();
 		}
 	}
-	
+
 	/**
 	 * Sends a keep-alive message to the remote peer if the time between now
 	 * and the previous message exceeds the limit set by KEEP_ALIVE_TIMEOUT.
@@ -181,7 +308,7 @@ public class Peer {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + Arrays.hashCode(id);
+		result = prime * result + Arrays.hashCode(peerId);
 		result = prime * result + ((ip == null) ? 0 : ip.hashCode());
 		return result;
 	}
@@ -201,7 +328,7 @@ public class Peer {
 			return false;
 		}
 		Peer other = (Peer) obj;
-		if (!Arrays.equals(id, other.id)) {
+		if (!Arrays.equals(peerId, other.peerId)) {
 			return false;
 		}
 		if (ip == null) {
@@ -221,9 +348,9 @@ public class Peer {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("Peer [");
-		if (id != null) {
-			builder.append("id=");
-			builder.append(Utility.bytesToHexStr(id));
+		if (peerId != null) {
+			builder.append("peerId=");
+			builder.append(Utility.bytesToHexStr(peerId));
 			builder.append(", ");
 		}
 		if (ip != null) {
@@ -236,4 +363,85 @@ public class Peer {
 		builder.append("]");
 		return builder.toString();
 	}
+
+	/**
+	 * Generates the handshake from the client to the peer.
+	 * 
+	 * The byte array is preallocated and then filled with System.arraycopy.
+	 * 
+	 * @author Julian Modesto
+	 * @param infohash the 20-byte SHA-1 hash of the bencoded form of the info value from the metainfo (.torrent) file
+	 * @param peerId the peer id generated by the client
+	 * @return the handshake byte array
+	 */
+	private byte[] getHandshake() {
+		// Preallocate bytes for handshake
+		byte[] handshake = new byte[68];
+
+		// Header 19:BitTorrent protocol
+		// Begin with byte 19
+		handshake[0] = 19;
+
+		// Add "BitTorrent protocol"
+		System.arraycopy(BYTES_PROTOCOL, 0, handshake, 1, BYTES_PROTOCOL.length);
+
+		// 8 reserved bytes 20-27 are already initialized to 0; skip + omit commented-out code below
+
+		// Add infohash SHA-1 hash - not encoded
+		System.arraycopy(this.infoHash, 0, handshake, 28, this.infoHash.length);
+
+		// Add peer id, which should match the infohash
+		System.arraycopy(this.clientId, 0, handshake, 48, this.clientId.length);	
+
+		System.out.println("Generated handshake.");
+
+		return handshake;
+	}
+
+	/**
+	 * Validate two handshakes for equality.
+	 * 
+	 * @param myHandshake
+	 * @param otherHandshake
+	 * @return the truth value for the equality of the handshakes
+	 */
+	private boolean validateHandshake(byte[] otherHandshake) {
+
+		if (otherHandshake == null) {
+			return false;
+		}
+
+		// Verify the length
+		if (otherHandshake.length != 68) {
+			return false;
+		}
+
+		// Check protocol
+		byte[] otherProtocol = new byte[19];
+		System.arraycopy(otherHandshake, 1, otherProtocol, 0, BYTES_PROTOCOL.length);
+		if (!Arrays.equals(otherProtocol, BYTES_PROTOCOL)) {
+			return false;
+		}
+
+		// Skip reserved bytes
+
+		// Check info hash against info hash from .torrent file
+		byte[] otherInfoHash = new byte[20];
+		System.arraycopy(otherHandshake, 28, otherInfoHash, 0, 20);
+		if (!Arrays.equals(otherInfoHash, this.infoHash)) {
+			return false;
+		}
+
+		// Check that peer ID is the same as from tracker
+		byte[] otherPeerId = new byte[20];
+		System.arraycopy(otherHandshake, 48, otherPeerId, 0, 20);
+		if (!Arrays.equals(otherPeerId, this.peerId)) {
+			return false;
+		}
+
+		System.out.println("Handshake validated.");
+
+		return true;
+	}
+
 }

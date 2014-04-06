@@ -63,4 +63,29 @@ public class Utility {
 		}
 		return new String(charArr);
 	}
+
+	/*
+	 * The following code is taken from Stack Overflow. The author has permitted
+	 * copying according to Creative Commons License. A copy of the license is
+	 * provided in legalcode.txt in the root folder of this project.
+	 * 
+	 * Author: Rohit Jain
+	 * Source URL:
+	 * http://stackoverflow.com/questions/18931283/checking-individual-bits-in-a-byte-array-in-java 
+	 * Date: September 21, 2013
+	 */
+	public static boolean isSetBit(byte[] arr, int bit) {
+		int index = bit / 8; // Get the index of the array for the byte with
+								// this bit
+		int bitPosition = bit % 8; // Position of this bit in a byte
+
+		return (arr[index] >> bitPosition & 1) == 1;
+	}
+	/* End code copied from Rohit Jain. */
+	
+	public static void setBit(byte[] arr, int bit) {
+		int index = bit / 8;
+		int bitPosition = bit % 8;
+		arr[index] = (byte) (arr[index] | (1 << bitPosition));
+	}
 }
