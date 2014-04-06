@@ -56,9 +56,8 @@ public class Peer extends Thread {
 	// Download information
 	private int pieceIndex = 0;
 	private int blockOffset;
-	int blockLength = PeerMessage.BLOCK_LENGTH;
+	private int blockLength = PeerMessage.BLOCK_LENGTH;
 
-	private byte[] myBitField;
 	private byte[] peerBitField;
 
 	private LinkedBlockingQueue<PeerMessage> peerMessages;
@@ -70,6 +69,7 @@ public class Peer extends Thread {
 
 	public Peer(Tracker tracker, byte[] peerId, String peerIP, Integer peerPort) {
 		this.tracker = tracker;
+		
 		this.peerId = peerId;
 		this.peerIP = peerIP;
 		this.peerPort = peerPort;
@@ -81,6 +81,9 @@ public class Peer extends Thread {
 		this.peerInterested = false;
 
 		this.keepRunning = true;
+		
+		// Set piece length
+		this.pieceLength = this.tracker.getTorrentInfo().piece_length;
 	}
 
 	private void shutdown() throws IOException {
@@ -213,12 +216,12 @@ public class Peer extends Thread {
 
 			this.shutdown();
 
-		} catch (IOException e) {
+		} catch (IOException ioe) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSuchAlgorithmException e) {
+			ioe.printStackTrace();
+		} catch (NoSuchAlgorithmException nsae) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.err.println(nsae.getLocalizedMessage());
 		}
 	}
 
@@ -341,23 +344,20 @@ public class Peer extends Thread {
 	private PeerMessage getRequestMessage() {
 		PeerMessage.RequestMessage requestMessage;
 
-		this.setPieceIndex();
-
 		// Check if requesting last piece
 		if (this.pieceIndex == this.totalPieces - 1) {
 			// Request the last irregularly-sized piece
 			this.blockLength = this.fileLength % this.pieceLength;
+		} else {
+			this.blockLength = this.pieceLength;
 		}
 
 		requestMessage = new PeerMessage.RequestMessage(this.pieceIndex, this.blockOffset, this.blockLength);
 
+		this.pieceIndex++;
 		this.blockOffset += this.pieceLength;
 
 		return requestMessage;
-	}
-
-	private void setPieceIndex() {
-		this.pieceIndex++;
 	}
 
 	/**
@@ -374,7 +374,6 @@ public class Peer extends Thread {
 			if(now > this.lastMessageTime){
 				throw new Exception("Didn't update lastMessageTime when sending a keep-alive!");
 			}
-			System.out.println("Sent Keep-Alive");
 		}
 	}
 

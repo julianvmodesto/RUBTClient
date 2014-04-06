@@ -106,7 +106,15 @@ public class Tracker extends Thread {
 
 	private String torrentFileName;
 	private String downloadFileName;
+
+	/**
+	 * File for the torrent metadata.
+	 */
 	private RandomAccessFile torrentFile;
+
+	/**
+	 * File to hold the torrent download.
+	 */
 	RandomAccessFile downloadFile;
 
 	private TorrentInfo torrentInfo;
@@ -115,7 +123,14 @@ public class Tracker extends Thread {
 	private byte[] myPeerId;
 	private int myPort;
 
+	/**
+	 * The total amount downloaded since the client sent the 'started' event to the tracker.
+	 */
 	private int downloaded;
+	
+	/**
+	 * The number of bytes this client has to download 100% of the torrent download.
+	 */
 	private int left;
 
 	private byte[] myBitField;
@@ -127,7 +142,7 @@ public class Tracker extends Thread {
 
 	/**
 	 * The constructor for the Tracker object sets the torrent file and download
-	 * file information
+	 * file information.
 	 * 
 	 * @param torrentFileName
 	 * @param downloadFileName
@@ -153,8 +168,9 @@ public class Tracker extends Thread {
 			this.myPeerId = generateMyPeerId();
 			this.myPort = 6881;
 			this.infoHash = this.torrentInfo.info_hash.array();
-			this.left = this.torrentInfo.torrent_file_bytes.length;
 			this.downloaded = 0;
+			this.left = (int) (this.torrentInfo.file_length - this.downloadFile.length());
+			System.out.println("The client has " + left + " bytes to download.");
 
 			boolean isStarting = true;
 
@@ -167,6 +183,9 @@ public class Tracker extends Thread {
 					// Build HTTP GET request as a string
 					httpGETRequestString = getHTTPGETRequest("started");
 
+					// Set file length to access proper offsets
+					this.downloadFile.setLength(this.torrentInfo.file_length);
+					
 					isStarting = false;
 				} else if (this.left == 0) {
 					httpGETRequestString = getHTTPGETRequest("completed");
@@ -444,19 +463,50 @@ public class Tracker extends Thread {
 		this.myBitField = myBitField;
 	}
 
+	public synchronized int getPieceIndex(byte[] peerBitField) {
+		return -1;
+	}
+
+	/**
+	 * @return the torrentInfo
+	 */
+	public synchronized TorrentInfo getTorrentInfo() {
+		return this.torrentInfo;
+	}
+
 	public void writePieceMessage(PieceMessage message)
 			throws NoSuchAlgorithmException, IOException {
 		int pieceIndex = message.getPieceIndex();
 		int blockOffset = message.getBlockOffset();
 		byte[] block = message.getBlock();
 		int blockLength = block.length;
+		
+		// Update the amount downloaded
+		this.downloaded = this.downloaded + blockLength;
 
 		if (verifyPiece(pieceIndex, block)) {
 			this.downloadFile.write(block, blockOffset, blockLength);
+			
+			// Update the amount left
+			this.left = this.left - blockLength;
 		}
 
 	}
 
+	/**
+	 * Verify a block of data by checking that its corresponding SHA-1 hash of
+	 * the data matches that in the torrent metadata file.
+	 * 
+	 * @author Julian Modesto
+	 * @param pieceIndex
+	 *            the zero-based index of the piece
+	 * @param block
+	 *            the block of data
+	 * @return true if the data is verifiably part of the file
+	 * @throws IOException
+	 * @throws NoSuchAlgorithmException
+	 * 
+	 */
 	public boolean verifyPiece(int pieceIndex, byte[] block)
 			throws IOException, NoSuchAlgorithmException {
 		byte[] hash = null;
