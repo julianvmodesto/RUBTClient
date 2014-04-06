@@ -1,8 +1,11 @@
 package edu.rutgers.cs.cs352.bt;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
@@ -124,12 +127,14 @@ public class Tracker extends Thread {
 	private int myPort;
 
 	/**
-	 * The total amount downloaded since the client sent the 'started' event to the tracker.
+	 * The total amount downloaded since the client sent the 'started' event to
+	 * the tracker.
 	 */
 	private int downloaded;
-	
+
 	/**
-	 * The number of bytes this client has to download 100% of the torrent download.
+	 * The number of bytes this client has to download 100% of the torrent
+	 * download.
 	 */
 	private int left;
 
@@ -169,8 +174,10 @@ public class Tracker extends Thread {
 			this.myPort = 6881;
 			this.infoHash = this.torrentInfo.info_hash.array();
 			this.downloaded = 0;
-			this.left = (int) (this.torrentInfo.file_length - this.downloadFile.length());
-			System.out.println("The client has " + left + " bytes to download.");
+			this.left = (int) (this.torrentInfo.file_length - this.downloadFile
+					.length());
+			System.out
+					.println("The client has " + left + " bytes to download.");
 
 			boolean isStarting = true;
 
@@ -183,9 +190,9 @@ public class Tracker extends Thread {
 					// Build HTTP GET request as a string
 					httpGETRequestString = getHTTPGETRequest("started");
 
-					// Set file length to access proper offsets
-					this.downloadFile.setLength(this.torrentInfo.file_length);
-					
+					// TODO Set file length to access proper offsets(?)
+					// this.downloadFile.setLength(this.torrentInfo.file_length);
+
 					isStarting = false;
 				} else if (this.left == 0) {
 					httpGETRequestString = getHTTPGETRequest("completed");
@@ -233,7 +240,7 @@ public class Tracker extends Thread {
 	}
 
 	/**
-	 * Shutsdown the tracker by sending a STOPPED tracker announce
+	 * Shutdowns the tracker by sending a STOPPED tracker announce
 	 * 
 	 * @throws IOException
 	 */
@@ -310,16 +317,17 @@ public class Tracker extends Thread {
 
 		System.out.println("Response Code: " + responseCode);
 
-		BufferedReader in = new BufferedReader(new InputStreamReader(
-				httpConnection.getInputStream()));
-		String inputLine;
-		StringBuffer response = new StringBuffer();
-
-		while ((inputLine = in.readLine()) != null) {
-			response.append(inputLine);
+		// Read each byte from input stream and write to an output stream
+		InputStream is = httpConnection.getInputStream();
+		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+		int dataIn;
+		byte[] data = new byte[16384];
+		while ((dataIn = is.read(data, 0, data.length)) != -1) {
+		  buffer.write(data, 0, dataIn);
 		}
-		in.close();
-		return response.toString().getBytes();
+		buffer.flush();
+
+		return buffer.toByteArray();
 	}
 
 	private void decodeTrackerResponse(byte[] response)
@@ -329,36 +337,57 @@ public class Tracker extends Thread {
 				.decode(response);
 
 		// Catch request failure
-		String errorMessage = (String) responseMap.get(KEY_FAILURE_REASON);
-		if (errorMessage != null) {
+		String errorMessage = null;
+		if (responseMap.containsKey(KEY_FAILURE_REASON)) {
+			errorMessage = (String) responseMap.get(KEY_FAILURE_REASON);
 			System.err.println("Error: request failed");
 			System.err.println(errorMessage);
 			System.exit(1);
 		}
 
 		// Catch warning message
-		/*
-		 * String warningMessage = (String)
-		 * responseMap.get(KEY_WARNING_MESSAGE); if (warningMessage != null) {
-		 * System.out.println("Warning:"); System.out.println(warningMessage); }
-		 */
 
-		// Set interval
-		this.interval = (Integer) responseMap.get(KEY_INTERVAL);
-
-		// Set min interval
-		if (responseMap.get(KEY_MIN_INTERVAL) != null) {
-			this.interval = (Integer) responseMap.get(KEY_MIN_INTERVAL);
-		} else {
-			this.interval = this.interval / 2;
+		String warningMessage = null;
+		if (responseMap.containsKey(KEY_WARNING_MESSAGE)) {
+			warningMessage = (String) responseMap.get(KEY_WARNING_MESSAGE);
+			System.out.println("Warning:");
+			System.out.println(warningMessage);
 		}
 
+		// Set interval
+		if (responseMap.containsKey(KEY_INTERVAL)) {
+			this.interval = (Integer) responseMap.get(KEY_INTERVAL);
+		} else {
+			System.err.println("Error: no interval specified in torrent info.");
+		}
+		
+
+		// Set min interval
+		if (responseMap.containsKey(KEY_MIN_INTERVAL)) {
+			this.interval = (Integer) responseMap.get(KEY_MIN_INTERVAL);
+			System.out.println("Minimal interval specified in torrent info.");
+		} else {
+			this.interval = this.interval / 2;
+			System.out.println("No minimal interval specified in torrent info.");
+		}
+		System.out.println("Minimal interval for announce = " + this.interval + " seconds");
+
 		// Set tracker id
-		this.trackerId = (String) responseMap.get(KEY_TRACKER_ID);
+		if (responseMap.containsKey(KEY_TRACKER_ID)) {
+			this.trackerId = (String) responseMap.get(KEY_TRACKER_ID);
+		} else {
+			System.out.println("No tracker ID specified by tracker response.");
+		}
+		
 
 		// Decode list of bencodeded dictionaries corresponding to peers
-		this.peerList = (ArrayList<HashMap<ByteBuffer, Object>>) responseMap
-				.get(KEY_PEERS);
+		if (responseMap.containsKey(KEY_PEERS)) {
+			this.peerList = (ArrayList<HashMap<ByteBuffer, Object>>) responseMap
+					.get(KEY_PEERS);
+		} else {
+			System.out.println("No peer list given by tracker response.");
+		}
+		
 	}
 
 	private void selectPeers(ArrayList<HashMap<ByteBuffer, Object>> peerList)
@@ -369,19 +398,30 @@ public class Tracker extends Thread {
 			// ToolKit.print(peerMap); // Print the map
 
 			// Get peer IP
-			ByteBuffer peerIPBB = (ByteBuffer) peerMap.get(KEY_IP);
-			String peerIP = new String(peerIPBB.array(), "UTF-8");
+			String peerIP = null;
+			if (peerMap.containsKey(KEY_IP)) {
+				ByteBuffer peerIPBB = (ByteBuffer) peerMap.get(KEY_IP);
+				peerIP = new String(peerIPBB.array(), "UTF-8");
+			}
 
 			// Find peers
 			if (peerIP.equals("128.6.171.130")
 					|| peerIP.equals("128.6.171.131")) {
+			
 				// Get peer ID
-				ByteBuffer peerIdBB = (ByteBuffer) peerMap.get(KEY_PEER_ID);
-				byte[] peerId = peerIdBB.array();
+				ByteBuffer peerIdBB;
+				byte[] peerId = null;
+				if (peerMap.containsKey(KEY_PEER_ID)) {
+					peerIdBB = (ByteBuffer) peerMap.get(KEY_PEER_ID);
+					peerId = peerIdBB.array();
+				}
 
 				// Get peer port
-				Integer peerPort = (Integer) peerMap.get(KEY_PORT);
-
+				Integer peerPort = -1;
+				if (peerMap.containsKey(KEY_PORT)) {
+					peerPort = (Integer) peerMap.get(KEY_PORT);
+				}
+				
 				// Start a new peer
 				if (!isExistingPeer(peerId)) {
 					Peer peer = new Peer(this, peerId, peerIP, peerPort);
@@ -480,13 +520,13 @@ public class Tracker extends Thread {
 		int blockOffset = message.getBlockOffset();
 		byte[] block = message.getBlock();
 		int blockLength = block.length;
-		
+
 		// Update the amount downloaded
 		this.downloaded = this.downloaded + blockLength;
 
 		if (verifyPiece(pieceIndex, block)) {
 			this.downloadFile.write(block, blockOffset, blockLength);
-			
+
 			// Update the amount left
 			this.left = this.left - blockLength;
 		}

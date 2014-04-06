@@ -54,7 +54,7 @@ public class Peer extends Thread {
 	private int fileLength;
 
 	// Download information
-	private int pieceIndex = 0;
+	private int pieceIndex;
 	private int blockOffset;
 	private int blockLength = PeerMessage.BLOCK_LENGTH;
 
@@ -82,8 +82,14 @@ public class Peer extends Thread {
 
 		this.keepRunning = true;
 		
+		//TODO Set piece index
+		this.pieceIndex = 0;
+		
 		// Set piece length
 		this.pieceLength = this.tracker.getTorrentInfo().piece_length;
+		
+		// Set total pieces
+		this.totalPieces = this.tracker.getTorrentInfo().piece_hashes.length;
 	}
 
 	private void shutdown() throws IOException {
