@@ -15,6 +15,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import edu.rutgers.cs.cs352.bt.PeerMessage.BitFieldMessage;
 import edu.rutgers.cs.cs352.bt.PeerMessage.KeepAliveMessage;
+import edu.rutgers.cs.cs352.bt.PeerMessage.PieceMessage;
 
 public class Peer extends Thread {
 
@@ -201,7 +202,9 @@ public class Peer extends Thread {
 						//TODO process request
 						break;
 					case PeerMessage.TYPE_PIECE:
-												
+						PieceMessage pieceMessage = (PieceMessage) message;
+						
+						this.tracker.writePieceMessage(pieceMessage);
 						this.sendPeerMessage(this.getRequestMessage());
 						break;
 					}
@@ -211,6 +214,9 @@ public class Peer extends Thread {
 			this.shutdown();
 
 		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchAlgorithmException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -352,18 +358,6 @@ public class Peer extends Thread {
 
 	private void setPieceIndex() {
 		this.pieceIndex++;
-	}
-
-	public void verifyPiece(byte[] piece) throws IOException {
-		try {
-			MessageDigest sha = MessageDigest.getInstance("SHA-1");
-			byte[] hash = sha.digest(piece);
-		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			shutdown();
-		}
-
 	}
 
 	/**
