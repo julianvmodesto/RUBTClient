@@ -1,40 +1,373 @@
-/**
- * 
- */
 package edu.rutgers.cs.cs352.bt;
 
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import edu.rutgers.cs.cs352.bt.Message.BitFieldMessage;
+import edu.rutgers.cs.cs352.bt.Message.PieceMessage;
+import edu.rutgers.cs.cs352.bt.Message.RequestMessage;
+import edu.rutgers.cs.cs352.bt.exceptions.BencodingException;
 
 /**
- * The RUBT Client class implements a client that operates under the BitTorrent
- * Protocol.
+ * Main class for RUBTClient. After starting, spends its time listening on the
+ * incoming message queue
+ * in order to decide what to do.
  * 
- * @author Gaurav Kumar
- * @author Julian Modesto
- * @author Jeffrey Rocha
+ * @author Robert Moore
  */
-public class RUBTClient {
 
-	/**
-	 * Take as a command-line argument the name of the .torrent file to be
-	 * loaded and the name of the file to save the data to.
-	 * 
-	 * @param args
-	 */
+public class RUBTClient extends Thread {
+
 	public static void main(String[] args) {
-
-		// Check for two arguments
+		// Check number/type of arguments
 		if (args.length != 2) {
 			System.err.println("Error: two arguments required");
 			System.exit(1);
 		}
 
+		byte[] metaBytes = null;
 		try {
-			Tracker tracker = new Tracker(args[0], args[1]);
-			tracker.run();
-		} catch (FileNotFoundException e) {
-			System.err.println("Error: encountered file not found exception");
+			File metaFile = new File(args[0]);
+			DataInputStream metaIn = new DataInputStream(
+					new FileInputStream(metaFile));
+			metaBytes = new byte[(int) metaFile.length()];
+			metaIn.readFully(metaBytes);
+			metaIn.close();
+		} catch (FileNotFoundException fnfe) {
+			System.err.println("Error: file not found exception encountered for file with filename " + args[0]);
+			System.exit(1);
+		} catch (IOException ie) {
+			System.err.println("Error: I/O exception encountered for file with filename " + args[0]);
+			System.exit(1);
 		}
+
+		// Null check on metaBytes
+		if (metaBytes == null) {
+			System.err.println("Error: corrupt torrent metainfo file");
+			System.exit(1);
+		}
+		
+		TorrentInfo tInfo = null;
+		try {
+			tInfo = new TorrentInfo(metaBytes);
+		} catch (BencodingException be) {
+			System.err.println("Error: bencoding exception encountered");
+			System.err.println(be.getMessage());
+		}
+
+		RUBTClient client;
+		try {
+			client = new RUBTClient(tInfo, args[1]);
+			
+			// Launches the client as a thread
+			client.start();
+		} catch (IOException ioe) {
+			System.err.println("Error: I/O exception encountered");
+		}
+	}
+
+	private final TorrentInfo tInfo;
+	private final String outFileName;
+	private RandomAccessFile outFile;
+	private final LinkedBlockingQueue<MessageTask> tasks = new LinkedBlockingQueue<MessageTask>();
+
+	// Generate a random peer ID value
+	private final byte[] peerId = generateMyPeerId();
+
+	/**
+	 * Hard code the first 4 bytes of our client's peer ID.
+	 */
+	private static final byte[] BYTES_GROUP = { 'G', 'P', '1', '6' };
+
+	private int port = 6881;
+	
+	private byte[] myBitField;
+	private int numPieces;
+	
+	private int downloaded;
+	private int uploaded;
+	private int left;
+	/**
+	 * @return the downloaded
+	 */
+	public synchronized int getDownloaded() {
+		return downloaded;
+	}
+
+	/**
+	 * @param downloaded the downloaded to set
+	 */
+	public synchronized void setDownloaded(int downloaded) {
+		this.downloaded = downloaded;
+	}
+
+	/**
+	 * @return the uploaded
+	 */
+	public synchronized int getUploaded() {
+		return uploaded;
+	}
+
+	/**
+	 * @param uploaded the uploaded to set
+	 */
+	public synchronized void setUploaded(int uploaded) {
+		this.uploaded = uploaded;
+	}
+
+	/**
+	 * @return the left
+	 */
+	public synchronized int getLeft() {
+		return left;
+	}
+
+	/**
+	 * @param left the left to set
+	 */
+	public synchronized void setLeft(int left) {
+		this.left = left;
+	}
+
+	/**
+	 * List of peers currently connected to the client.
+	 */
+	private final List<Peer> peers = Collections.synchronizedList(new LinkedList<Peer>());
+
+	/**
+	 * A timer for scheduling tracker announces.
+	 */
+	private final Timer trackerTimer = new Timer();
+
+	/**
+	 * Tracker interface.
+	 */
+	final Tracker tracker;
+	/**
+	 * Flag to keep the main loop running. Once false, the client *should* exit.
+	 */
+	private volatile boolean keepRunning = true;
+
+	private static class TrackerAnnounceTask extends TimerTask {
+		private final RUBTClient client;
+
+		public TrackerAnnounceTask(final RUBTClient client) {
+			this.client = client;
+		}
+
+		public void run() {
+			List<Peer> peers = null;
+			try {
+				peers = this.client.tracker.announce(client.getDownloaded(), client.getUploaded(), client.getLeft(), null);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (BencodingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+			if (peers != null && !peers.isEmpty()) {
+				this.client.addPeers(peers);
+			}
+			this.client.trackerTimer.schedule(this,
+					this.client.tracker.getInterval() * 1000);
+		}
+	}
+
+	public RUBTClient(final TorrentInfo tInfo, final String outFile) throws IOException {
+		this.tInfo = tInfo;
+		this.outFileName = outFile;
+		this.tracker = new Tracker(this.peerId, this.tInfo.info_hash.array(),
+				this.tInfo.announce_url.toString(), this.port);
+		
+		this.downloaded = 0;
+		this.uploaded = 0;
+		this.left = this.tInfo.file_length;
+	}
+
+	@Override
+	public void run() {
+
+		try {
+			this.outFile = new RandomAccessFile(this.outFileName, "rw");
+		} catch (FileNotFoundException e) {
+			System.err.println("Unable to open output file for writing!");
+			e.printStackTrace();
+			// Exit right now, since nothing else was started yet
+			return;
+		}
+
+		// Send "started" announce
+		List<Peer> peers = null;
+		try {
+			peers = this.tracker.announce(this.getDownloaded(), this.getUploaded(), this.getLeft(), "started");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (BencodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		this.addPeers(peers);
+		{
+			// Schedule the first "regular" announce - the rest are schedule by the
+			// task itself
+			int interval = this.tracker.getInterval();
+			this.trackerTimer
+			.schedule(new TrackerAnnounceTask(this), interval * 1000);
+		}
+
+		// Main loop:
+		while (this.keepRunning) {
+			try {
+				MessageTask task = this.tasks.take();
+				// TODO: Process the task
+				Message msg = task.getMessage();
+				Peer peer = task.getPeer();
+
+				System.out.println("Processing message: " + Message.ID_NAMES[msg.getId()]);
+
+				switch (msg.getId()) {
+				case Message.ID_CHOKE:
+					// Update internal state
+					peer.setLocalChoked(true);
+					break;
+				case Message.ID_UNCHOKE:
+					// Update internal state
+					peer.setLocalChoked(false);
+
+					if (!peer.amChoked() && peer.amInterested()) {
+						this.chooseAndRequestPiece(peer);
+					}
+					break;
+				case Message.ID_INTERESTED:
+					// Update internal state
+					peer.setRemoteInterested(true);
+
+					// Only send unchoke if not downloading
+					if (peer.amInterested()) {
+						peer.sendMessage(Message.CHOKE);
+						peer.setRemoteChoked(true);
+					} else {
+						peer.sendMessage(Message.UNCHOKE);
+						peer.setRemoteChoked(false);
+					}					
+					break;
+				case Message.ID_UNINTERESTED:
+					// Update internal state
+					peer.setRemoteInterested(false);
+					break;
+				case Message.ID_BIT_FIELD:
+					//TODO inspect bit field and send a request
+					break;
+				case Message.ID_HAVE:
+					// Send an interested message upon receiving first HAVE
+					peer.sendMessage(Message.INTERESTED);
+
+					//TODO inspect bit field and send a request
+					break;
+				case Message.ID_REQUEST:
+					//TODO process request
+					break;
+				case Message.ID_PIECE:
+					break;
+				} 
+			} catch (InterruptedException ie) {
+				// This can happen either "randomly" or due to a shutdown - just
+				// continue the loop.
+				continue;
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		this.shutdown();
+	}
+
+	void addPeers(final List<Peer> newPeers) {
+		// TODO: Check which of newPeers are not already connected (peer ID) and try
+		// to connect to those
+		
+		for (Peer newPeer : newPeers) {
+			if ((newPeer.getIp().equals("128.6.171.130") || newPeer.getIp().equals("128.6.171.131")) && !this.peers.contains(newPeer)) {
+				this.peers.add(newPeer);
+				System.out.println("Connecting to new peer: " + newPeer);
+			}
+		}
+	}
+
+	private void chooseAndRequestPiece(final Peer peer) throws IOException {
+		// TODO: Determine which piece to request from the remote peer, and tell the
+		// peer to "download" it.
+		int pieceIndex;
+		int blockOffset;
+		
+		// Check if requesting last piece
+		if (pieceIndex == totalPieces - 1) {
+			// Request the last irregularly-sized piece
+			blockLength = fileLength % pieceLength;
+		} else {
+			blockLength = pieceLength;
+		}
+		RequestMessage msg =  new RequestMessage(pieceIndex, blockOffset, blockLength);
+		peer.sendMessage(msg);
+	}
+
+	private void shutdown() {
+		// Cancel any upcoming tracker announces
+		this.trackerTimer.cancel();
+		// Disconnect all peers
+		for(Peer peer : this.peers){
+			peer.disconnect();
+		}
+
+		// FIXME: Tracker parameters for "stopped"
+		try {
+			this.tracker.announce(0, 0, 0, "stopped");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (BencodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		// TODO: make sure all data is written to disk, all threads done
+	}
+
+	/**
+	 * Generates the randomized peer ID with the first four bytes hard-coded
+	 * with our group ID
+	 * 
+	 * @author Julian Modesto
+	 * @return the generated ID
+	 */
+	private static byte[] generateMyPeerId() {
+		byte[] peerId = new byte[20];
+
+		// Hard code the first four bytes for easy identification
+		System.arraycopy(BYTES_GROUP, 0, peerId, 0, BYTES_GROUP.length);
+
+		// Randomly generate remaining 16 bytes
+		byte[] random = new byte[16];
+		new Random().nextBytes(random);
+
+		System.arraycopy(random, 0, peerId, 4, random.length);
+
+		return peerId;
 	}
 
 }

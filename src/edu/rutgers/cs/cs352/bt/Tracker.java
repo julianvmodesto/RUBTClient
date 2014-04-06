@@ -1,42 +1,25 @@
 package edu.rutgers.cs.cs352.bt;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.RandomAccessFile;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.ByteBuffer;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Random;
+import java.util.LinkedList;
+import java.util.List;
 
-import edu.rutgers.cs.cs352.bt.PeerMessage.PieceMessage;
 import edu.rutgers.cs.cs352.bt.exceptions.BencodingException;
 import edu.rutgers.cs.cs352.bt.util.Bencoder2;
 import edu.rutgers.cs.cs352.bt.util.Utility;
 
 /**
- * 
- * @author Gaurav Kumar
- * @author Julian Modesto
- * @author Jeffrey Rocha
+ * @author Robert Moore
+ *
  */
-public class Tracker extends Thread {
-
-	/**
-	 * Hard code the first 4 bytes of our client's peer ID.
-	 */
-	private static final byte[] BYTES_GROUP = { 'G', 'P', '1', '6' };
-
+public class Tracker {
 	/**
 	 * Key used to retrieve the request error message.
 	 */
@@ -93,7 +76,7 @@ public class Tracker extends Thread {
 	 * Key to the peer's IP address.
 	 */
 	private static final ByteBuffer KEY_IP = ByteBuffer.wrap(new byte[] { 'i',
-			'p' });
+	'p' });
 
 	/**
 	 * Key to the peer's self-selected ID.
@@ -107,234 +90,94 @@ public class Tracker extends Thread {
 	private static final ByteBuffer KEY_PORT = ByteBuffer.wrap(new byte[] {
 			'p', 'o', 'r', 't' });
 
-	private String torrentFileName;
-	private String downloadFileName;
+
+	private final byte[] infoHash;
+	private final byte[] clientId;
+	private final String announceUrl;
+	private final int port;
+
+	private int interval = 60;
 
 	/**
-	 * File for the torrent metadata.
+	 * Creates a new Tracker interface object.
+	 * @param clientId the local client's peer id
+	 * @param infoHash the torrent's info hash
+	 * @param announceUrl the announce URL of the tracker
+	 * @param port the listen port for the local client.
 	 */
-	private RandomAccessFile torrentFile;
-
-	/**
-	 * File to hold the torrent download.
-	 */
-	RandomAccessFile downloadFile;
-
-	private TorrentInfo torrentInfo;
-	private byte[] infoHash;
-
-	private byte[] myPeerId;
-	private int myPort;
-
-	/**
-	 * The total amount downloaded since the client sent the 'started' event to
-	 * the tracker.
-	 */
-	private int downloaded;
-
-	/**
-	 * The number of bytes this client has to download 100% of the torrent
-	 * download.
-	 */
-	private int left;
-
-	private byte[] myBitField;
-
-	private int interval;
-	private String trackerId;
-	private ArrayList<HashMap<ByteBuffer, Object>> peerList;
-	private ArrayList<Peer> peers;
-
-	/**
-	 * The constructor for the Tracker object sets the torrent file and download
-	 * file information.
-	 * 
-	 * @param torrentFileName
-	 * @param downloadFileName
-	 * @throws FileNotFoundException
-	 */
-	public Tracker(String torrentFileName, String downloadFileName)
-			throws FileNotFoundException {
-		this.torrentFileName = torrentFileName;
-		this.downloadFileName = downloadFileName;
-
-		this.torrentFile = new RandomAccessFile(torrentFileName, "r");
-		this.downloadFile = new RandomAccessFile(downloadFileName, "rws");
-
-		this.peers = new ArrayList<Peer>();
-	}
-
-	public void run() {
-		try {
-			// Open the .torrent file and parse the data inside
-			byte[] torrentBytes = Utility.getFileInBytes(this.torrentFile);
-			this.torrentInfo = new TorrentInfo(torrentBytes);
-
-			this.myPeerId = generateMyPeerId();
-			this.myPort = 6881;
-			this.infoHash = this.torrentInfo.info_hash.array();
-			this.downloaded = 0;
-			this.left = (int) (this.torrentInfo.file_length - this.downloadFile
-					.length());
-			System.out
-					.println("The client has " + left + " bytes to download.");
-
-			boolean isStarting = true;
-
-			String httpGETRequestString;
-			byte[] response;
-
-			while (true) {
-
-				if (isStarting) {
-					// Build HTTP GET request as a string
-					httpGETRequestString = getHTTPGETRequest("started");
-
-					// TODO Set file length to access proper offsets(?)
-					// this.downloadFile.setLength(this.torrentInfo.file_length);
-
-					isStarting = false;
-				} else if (this.left == 0) {
-					httpGETRequestString = getHTTPGETRequest("completed");
-					System.out.println("GET Request: " + httpGETRequestString);
-
-					// Send HTTP GET request and get tracker response
-					response = getHTTPGETRequestResponse(httpGETRequestString);
-
-					this.shutdown();
-					break;
-				} else {
-					// Build HTTP GET request as a string
-					httpGETRequestString = getHTTPGETRequest("");
-				}
-
-				System.out.println("GET Request: " + httpGETRequestString);
-
-				// Send HTTP GET request and get tracker response
-				response = getHTTPGETRequestResponse(httpGETRequestString);
-
-				// Get peer list
-				decodeTrackerResponse(response);
-
-				// Connect to peers
-				selectPeers(this.peerList);
-
-				System.out.println("Wait " + this.interval
-						+ " seconds to send announce");
-				sleep(this.interval * 1000);
-				break;
-				// TODO remove break
-			}
-
-		} catch (IOException ioe) {
-			System.err.println("Error: encountered I/O exception");
-			System.err.println(ioe.getMessage());
-		} catch (BencodingException be) {
-			System.err.println("Error: encountered bencoding exception");
-			System.err.println(be.getMessage());
-		} catch (InterruptedException ie) {
-			System.err.println("Error: encountered interrupted exception");
-			System.err.println(ie.getMessage());
-		}
-
+	public Tracker(final byte[] clientId, final byte[] infoHash, final String announceUrl, final int port){
+		this.infoHash = infoHash;
+		this.clientId = clientId;
+		this.announceUrl = announceUrl;
+		this.port = port;
 	}
 
 	/**
-	 * Shutdowns the tracker by sending a STOPPED tracker announce
-	 * 
-	 * @throws IOException
+	 * Perform a tracker announce with the provided parameters
+	 * @param downloaded the number of bytes downloaded in this torrent
+	 * @param uploaded the number of bytes uploaded in this torrent
+	 * @param left the number of bytes remaining in the file
+	 * @param event the announce event (optional)
+	 * @return the returned list of peers, or {@code null} if an error occurred.
+	 * @throws IOException 
+	 * @throws BencodingException 
 	 */
-	private void shutdown() throws IOException {
-		// Build HTTP GET request as a string
-		String httpGETRequestString = getHTTPGETRequest("stopped");
-		System.out.println("GET Request: " + httpGETRequestString);
-
-		// Send HTTP GET request and get tracker response
-		byte[] response = getHTTPGETRequestResponse(httpGETRequestString);
-	}
-
-	/**
-	 * Generates the randomized peer ID with the first four bytes hard-coded
-	 * with our group ID
-	 * 
-	 * @author Julian Modesto
-	 * @return the generated ID
-	 */
-	private static byte[] generateMyPeerId() {
-		byte[] peerId = new byte[20];
-
-		// Hard code the first four bytes for easy identification
-		System.arraycopy(BYTES_GROUP, 0, peerId, 0, BYTES_GROUP.length);
-
-		// Randomly generate remaining 16 bytes
-		byte[] random = new byte[16];
-		new Random().nextBytes(random);
-
-		System.arraycopy(random, 0, peerId, 4, random.length);
-
-		return peerId;
-	}
-
-	/**
-	 * Builds the HTTP GET request to send to the tracker and returns it as a
-	 * string.
-	 * 
-	 * @param event
-	 *            one of started, completed, stopped, or empty
-	 * @return the HTTP GET request
-	 */
-	private String getHTTPGETRequest(String event) {
+	public List<Peer> announce(int downloaded, int uploaded, int left, String event) throws IOException, BencodingException{
+		// Build HTTP GET request from the announce URL from the metainfo
 		StringBuffer request = new StringBuffer();
-
-		request.append(this.torrentInfo.announce_url.toString());
+		request.append(this.announceUrl);
 		request.append("?info_hash=");
 		request.append(Utility.bytesToURL(this.infoHash));
 		request.append("&peer_id=");
-		request.append(Utility.bytesToURL(this.myPeerId));
+		request.append(Utility.bytesToURL(this.clientId));
 		request.append("&port=");
-		request.append(this.myPort);
+		request.append(this.port);
 		request.append("&downloaded=");
-		request.append(this.downloaded);
+		request.append(downloaded);
 		request.append("&left=");
-		request.append(this.left);
-		if (!event.isEmpty()) {
+		request.append(left);
+		if (event != null && !event.isEmpty()) {
 			request.append("&event=");
 			request.append(event);
 		}
 
-		return request.toString();
-	}
-
-	private byte[] getHTTPGETRequestResponse(String request) throws IOException {
-		URL url = new URL(request);
-		HttpURLConnection httpConnection = (HttpURLConnection) url
-				.openConnection();
-		httpConnection.setRequestMethod("GET");
+		URL url = new URL(request.toString());
+		HttpURLConnection httpConnection;
+		try {
+			httpConnection = (HttpURLConnection) url
+					.openConnection();
+			httpConnection.setRequestMethod("GET");
+		} catch (IOException ioe) {
+			throw new IOException("An I/O exception occurred when openning HTTP connection");
+		}
 
 		// Response code used to find if connection was success or failure (and
 		// reason for failure)
 		int responseCode = httpConnection.getResponseCode();
-
 		System.out.println("Response Code: " + responseCode);
 
+		// Receive the response
 		// Read each byte from input stream and write to an output stream
 		InputStream is = httpConnection.getInputStream();
 		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 		int dataIn;
 		byte[] data = new byte[16384];
 		while ((dataIn = is.read(data, 0, data.length)) != -1) {
-		  buffer.write(data, 0, dataIn);
+			buffer.write(data, 0, dataIn);
 		}
 		buffer.flush();
+		buffer.close();
+		is.close();
+		byte[] response = buffer.toByteArray();
 
-		return buffer.toByteArray();
-	}
-
-	private void decodeTrackerResponse(byte[] response)
-			throws BencodingException, UnsupportedEncodingException {
-		@SuppressWarnings("unchecked")
-		HashMap<ByteBuffer, Object> responseMap = (HashMap<ByteBuffer, Object>) Bencoder2
-				.decode(response);
+		// Decode the Bencoded response
+		HashMap<ByteBuffer, Object> responseMap;
+		try {
+			responseMap = (HashMap<ByteBuffer, Object>) Bencoder2
+					.decode(response);
+		} catch (BencodingException be) {
+			throw new BencodingException("A bencoding exception occurred when decoding tracker response.");
+		}
 
 		// Catch request failure
 		String errorMessage = null;
@@ -346,7 +189,6 @@ public class Tracker extends Thread {
 		}
 
 		// Catch warning message
-
 		String warningMessage = null;
 		if (responseMap.containsKey(KEY_WARNING_MESSAGE)) {
 			warningMessage = (String) responseMap.get(KEY_WARNING_MESSAGE);
@@ -354,13 +196,12 @@ public class Tracker extends Thread {
 			System.out.println(warningMessage);
 		}
 
-		// Set interval
+		// Set the interval
 		if (responseMap.containsKey(KEY_INTERVAL)) {
 			this.interval = (Integer) responseMap.get(KEY_INTERVAL);
 		} else {
 			System.err.println("Error: no interval specified in torrent info.");
 		}
-		
 
 		// Set min interval
 		if (responseMap.containsKey(KEY_MIN_INTERVAL)) {
@@ -368,34 +209,28 @@ public class Tracker extends Thread {
 			System.out.println("Minimal interval specified in torrent info.");
 		} else {
 			this.interval = this.interval / 2;
-			System.out.println("No minimal interval specified in torrent info.");
+			System.out
+			.println("No minimal interval specified in torrent info.");
 		}
-		System.out.println("Minimal interval for announce = " + this.interval + " seconds");
-
-		// Set tracker id
-		if (responseMap.containsKey(KEY_TRACKER_ID)) {
-			this.trackerId = (String) responseMap.get(KEY_TRACKER_ID);
-		} else {
-			System.out.println("No tracker ID specified by tracker response.");
-		}
+		System.out.println("Minimal interval for announce = " + this.interval
+				+ " seconds");
 		
-
 		// Decode list of bencodeded dictionaries corresponding to peers
+		ArrayList<HashMap<ByteBuffer, Object>> encodedPeerList = null;
 		if (responseMap.containsKey(KEY_PEERS)) {
-			this.peerList = (ArrayList<HashMap<ByteBuffer, Object>>) responseMap
+			encodedPeerList = (ArrayList<HashMap<ByteBuffer, Object>>) responseMap
 					.get(KEY_PEERS);
 		} else {
 			System.out.println("No peer list given by tracker response.");
+			return null;
 		}
-		
-	}
 
-	private void selectPeers(ArrayList<HashMap<ByteBuffer, Object>> peerList)
-			throws UnsupportedEncodingException, InterruptedException {
-		// Search the peers for the peer ID
-		for (HashMap<ByteBuffer, Object> peerMap : peerList) {
+		// Iterate through the peers and build peer list
+		LinkedList<Peer> peerList = new LinkedList<Peer>();
+		for (HashMap<ByteBuffer, Object> peerMap : encodedPeerList) {
 
-			// ToolKit.print(peerMap); // Print the map
+			// Print the map
+			// ToolKit.print(peerMap);
 
 			// Get peer IP
 			String peerIP = null;
@@ -404,164 +239,36 @@ public class Tracker extends Thread {
 				peerIP = new String(peerIPBB.array(), "UTF-8");
 			}
 
-			// Find peers
-			if (peerIP.equals("128.6.171.130")
-					|| peerIP.equals("128.6.171.131")) {
-			
-				// Get peer ID
-				ByteBuffer peerIdBB;
-				byte[] peerId = null;
-				if (peerMap.containsKey(KEY_PEER_ID)) {
-					peerIdBB = (ByteBuffer) peerMap.get(KEY_PEER_ID);
-					peerId = peerIdBB.array();
-				}
-
-				// Get peer port
-				Integer peerPort = -1;
-				if (peerMap.containsKey(KEY_PORT)) {
-					peerPort = (Integer) peerMap.get(KEY_PORT);
-				}
-				
-				// Start a new peer
-				if (!isExistingPeer(peerId)) {
-					Peer peer = new Peer(this, peerId, peerIP, peerPort);
-					this.peers.add(peer);
-					peer.start();
-
-					System.out.println("Found a peer to download from");
-					System.out.println("\tPeer ID in hex: "
-							+ Utility.bytesToHexStr(peerId));
-					System.out.println("\tIP: " + peerIP);
-					System.out.println("\tPort: " + peerPort);
-					break;
-					// TODO remove break to start multiple peers
-				}
+			// Get peer ID
+			ByteBuffer peerIdBB;
+			byte[] peerId = null;
+			if (peerMap.containsKey(KEY_PEER_ID)) {
+				peerIdBB = (ByteBuffer) peerMap.get(KEY_PEER_ID);
+				peerId = peerIdBB.array();
 			}
 
-		}
-	}
-
-	private boolean isExistingPeer(byte[] peerId) {
-		for (Peer p : this.peers) {
-			if (Arrays.equals(p.getPeerId(), peerId)) {
-				return true;
+			// Get peer port
+			Integer peerPort = -1;
+			if (peerMap.containsKey(KEY_PORT)) {
+				peerPort = (Integer) peerMap.get(KEY_PORT);
 			}
+
+			// Add new peer
+			Peer peer = new Peer(peerId, peerIP, peerPort);
+			peerList.add(peer);
+
+			System.out.println("Peer in torrent: " + peer);
 		}
-		return false;
-	}
-
-	public byte[] getMyPeerId() {
-		return this.myPeerId;
-	}
-
-	public byte[] getInfoHash() {
-		return this.infoHash;
+		
+		return peerList;
 	}
 
 	/**
-	 * @return the downloaded
+	 * Get the latest "interval" value from the tracker.
+	 * @return the latest returned "interval" value
 	 */
-	public synchronized int getDownloaded() {
-		return downloaded;
-	}
-
-	/**
-	 * @param downloaded
-	 *            the downloaded to set
-	 */
-	public synchronized void setDownloaded(int downloaded) {
-		this.downloaded = downloaded;
-	}
-
-	/**
-	 * @return the left
-	 */
-	public synchronized int getLeft() {
-		return left;
-	}
-
-	/**
-	 * @param left
-	 *            the left to set
-	 */
-	public synchronized void setLeft(int left) {
-		this.left = left;
-	}
-
-	/**
-	 * @return the myBitField
-	 */
-	public synchronized byte[] getMyBitField() {
-		return myBitField;
-	}
-
-	/**
-	 * @param myBitField
-	 *            the myBitField to set
-	 */
-	public synchronized void setMyBitField(byte[] myBitField) {
-		this.myBitField = myBitField;
-	}
-
-	public synchronized int getPieceIndex(byte[] peerBitField) {
-		return -1;
-	}
-
-	/**
-	 * @return the torrentInfo
-	 */
-	public synchronized TorrentInfo getTorrentInfo() {
-		return this.torrentInfo;
-	}
-
-	public void writePieceMessage(PieceMessage message)
-			throws NoSuchAlgorithmException, IOException {
-		int pieceIndex = message.getPieceIndex();
-		int blockOffset = message.getBlockOffset();
-		byte[] block = message.getBlock();
-		int blockLength = block.length;
-
-		// Update the amount downloaded
-		this.downloaded = this.downloaded + blockLength;
-
-		if (verifyPiece(pieceIndex, block)) {
-			this.downloadFile.write(block, blockOffset, blockLength);
-
-			// Update the amount left
-			this.left = this.left - blockLength;
-		}
-
-	}
-
-	/**
-	 * Verify a block of data by checking that its corresponding SHA-1 hash of
-	 * the data matches that in the torrent metadata file.
-	 * 
-	 * @author Julian Modesto
-	 * @param pieceIndex
-	 *            the zero-based index of the piece
-	 * @param block
-	 *            the block of data
-	 * @return true if the data is verifiably part of the file
-	 * @throws IOException
-	 * @throws NoSuchAlgorithmException
-	 * 
-	 */
-	public boolean verifyPiece(int pieceIndex, byte[] block)
-			throws IOException, NoSuchAlgorithmException {
-		byte[] hash = null;
-
-		MessageDigest sha = MessageDigest.getInstance("SHA-1");
-		hash = sha.digest(block);
-
-		if (Arrays.equals(this.torrentInfo.piece_hashes[pieceIndex].array(),
-				hash)) {
-			System.out.println("Piece verified.");
-			return true;
-		}
-		System.out.println("Piece incorrect.");
-		return false;
-
+	public int getInterval() {
+		return this.interval;
 	}
 
 }
