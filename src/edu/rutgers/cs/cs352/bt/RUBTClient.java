@@ -192,6 +192,7 @@ public class RUBTClient extends Thread {
 			this.client = client;
 		}
 
+		@Override
 		public void run() {
 			List<Peer> peers = null;
 			try {
@@ -283,7 +284,7 @@ public class RUBTClient extends Thread {
 
 		// Start new thread to listen for "quit" from user
 		Thread userInput = new Thread()
-		{
+		{	@Override
 			public void run() {
 				final BufferedReader br = new BufferedReader(new InputStreamReader(
 						System.in));
