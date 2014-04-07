@@ -17,7 +17,8 @@ import edu.rutgers.cs.cs352.bt.util.Utility;
 
 /**
  * @author Robert Moore
- *
+ * @author Gaurav Kumar
+ * @author Julian Modesto
  */
 public class Tracker {
 	private final RUBTClient client;
@@ -96,7 +97,21 @@ public class Tracker {
 	private final byte[] infoHash;
 	private final byte[] clientId;
 	private final String announceUrl;
-	private final int port;
+	private int port;
+
+	/**
+	 * @return the port
+	 */
+	public int getPort() {
+		return port;
+	}
+
+	/**
+	 * @param port the port to set
+	 */
+	public void setPort(int port) {
+		this.port = port;
+	}
 
 	private int interval = 60;
 

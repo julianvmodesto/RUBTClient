@@ -11,14 +11,14 @@ import java.io.IOException;
  * the messages according to the protocol specs.
  * 
  * @author Robert Moore
+ * @author Julian Modesto
  */
 public class Message {
 
 	/**
-	 * A keep-alive message.
+	 * Faux message id value for Keep-Alive messages.
 	 */
-	public static final Message KEEP_ALIVE = new Message(0, (byte) 0);
-
+	public static final byte ID_KEEP_ALIVE = 9;
 	/**
 	 * Message id value for Choke messages.
 	 */
@@ -57,6 +57,10 @@ public class Message {
 	public static final byte ID_CANCEL = 8;
 
 	/**
+	 * A keep-alive message.
+	 */
+	public static final Message KEEP_ALIVE = new Message(ID_KEEP_ALIVE, (byte) 0);
+	/**
 	 * A choke message.
 	 */
 	public static final Message CHOKE = new Message(1, ID_CHOKE);
@@ -87,9 +91,13 @@ public class Message {
 		this.id = id;
 	}
 
+	/**
+	 * The superclass Message doesn't have any payload to write, so nothing will be written.
+	 * @param dos
+	 * @throws IOException
+	 */
 	public void writePayload(DataOutputStream dos) throws IOException {
-		// TODO Auto-generated method stub
-		
+		// Nothing here
 	}
 
 	public byte getId() {
@@ -168,6 +176,10 @@ public class Message {
 		dout.flush();
 	}
 	
+	/**
+	 * A have message.
+	 *
+	 */
 	public static class HaveMessage extends Message {
 		private final int pieceIndex;
 
@@ -186,6 +198,10 @@ public class Message {
 		}
 	}
 
+	/**
+	 * A bit field message.
+	 *
+	 */
 	public static class BitFieldMessage extends Message {
 		private final byte[] bitField;
 
@@ -204,6 +220,10 @@ public class Message {
 		}
 	}
 
+	/**
+	 * A request message.
+	 *
+	 */
 	public static class RequestMessage extends Message {
 		private final int pieceIndex;
 		private final int blockOffset;
@@ -236,6 +256,10 @@ public class Message {
 		}
 	}
 
+	/**
+	 * A piece message.
+	 *
+	 */
 	public static class PieceMessage extends Message {
 		private final int pieceIndex;
 		private final int blockOffset;

@@ -8,6 +8,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -18,6 +22,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import edu.rutgers.cs.cs352.bt.Message.BitFieldMessage;
 import edu.rutgers.cs.cs352.bt.Message.HaveMessage;
+import edu.rutgers.cs.cs352.bt.Message.PieceMessage;
 import edu.rutgers.cs.cs352.bt.Message.RequestMessage;
 import edu.rutgers.cs.cs352.bt.exceptions.BencodingException;
 import edu.rutgers.cs.cs352.bt.util.Utility;
@@ -104,7 +109,13 @@ public class RUBTClient extends Thread {
 
 	private int port = 6881;
 
-	private byte[] myBitField;
+
+	private byte[] bitField;
+
+	/**
+	 * An array of ByteBuffers to hold pieces assembled from blocks.
+	 */
+	private ByteBuffer[] pieces;
 
 	private int downloaded;
 	private int uploaded;
@@ -223,29 +234,45 @@ public class RUBTClient extends Thread {
 			// Exit right now, since nothing else was started yet
 			return;
 		}
-		
+
 		//TODO update from output file
 		// Set client bit field
 		int bytes = (int) Math.ceil((double)totalPieces/8);
 		byte[] tempBitField = new byte[bytes];
-		
+
 		for (int i = 0; i < tempBitField.length; i++) {
 			tempBitField[i] = 0;
 		}
-		this.myBitField = tempBitField;
+		this.bitField = tempBitField;
+
+		initializePieces();
 
 		// Send "started" announce
 		List<Peer> peers = null;
-		try {
-			peers = this.tracker.announce(this.getDownloaded(), this.getUploaded(), this.getLeft(), "started");
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (BencodingException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+		int announcePortIncrement;
+		boolean trackerFailure = true;
+		for(announcePortIncrement = 0; announcePortIncrement < 9 && trackerFailure == true; announcePortIncrement++) {
+			if(announcePortIncrement != 0){
+				System.out.println("Retrying on a new port.");
+			}
+			try {
+				peers = this.tracker.announce(this.getDownloaded(), this.getUploaded(), this.getLeft(), "started");
+				trackerFailure = false;
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				this.tracker.setPort(this.tracker.getPort() + announcePortIncrement);
+				System.err.println("Communication with tracker failed.");
+				trackerFailure = true;
+				e1.printStackTrace();
+			} catch (BencodingException e1) {
+				// TODO Auto-generated catch block
+				this.tracker.setPort(this.tracker.getPort() + announcePortIncrement);
+				System.err.println("Tracker response invalid.");
+				trackerFailure = true;
+				e1.printStackTrace();
+			}
 		}
-		
+
 		this.addPeers(peers);
 		{
 			// Schedule the first "regular" announce - the rest are schedule by the
@@ -253,26 +280,26 @@ public class RUBTClient extends Thread {
 			int interval = this.tracker.getInterval();
 			this.trackerTimer.schedule(new TrackerAnnounceTask(this), interval * 1000);
 		}
-		
+
 		Thread userInput = new Thread()
-	    {
-	        public void run() {
-	        	final BufferedReader br = new BufferedReader(new InputStreamReader(
-	    				System.in));
-	    		String line = null;
-	    		try {
-	    			line = br.readLine();
-	    			while (!line.equals("quit")) {
-	    				
-	    			}
-	    			shutdown();
-	    		} catch (IOException ioe) {
-	    			// TODO Auto-generated catch block
-	    			ioe.printStackTrace();
-	    		}
-	        }
-	    };
-	    userInput.start();
+		{
+			public void run() {
+				final BufferedReader br = new BufferedReader(new InputStreamReader(
+						System.in));
+				String line = null;
+				try {
+					line = br.readLine();
+					while (!line.equals("quit")) {
+
+					}
+					shutdown();
+				} catch (IOException ioe) {
+					// TODO Auto-generated catch block
+					ioe.printStackTrace();
+				}
+			}
+		};
+		userInput.start();
 
 		// Main loop:
 		while (this.keepRunning) {
@@ -284,9 +311,9 @@ public class RUBTClient extends Thread {
 
 				System.out.println("Processing message: " + Message.ID_NAMES[msg.getId()]);
 
-				byte[] peerBitField;
-				
 				switch (msg.getId()) {
+				case Message.ID_KEEP_ALIVE:
+					break;
 				case Message.ID_CHOKE:
 					// Update internal state
 					peer.setLocalChoked(true);
@@ -318,9 +345,9 @@ public class RUBTClient extends Thread {
 					break;
 				case Message.ID_BIT_FIELD:
 					// Set peer bit field
-					BitFieldMessage bitFieldMessage = (BitFieldMessage) msg;
-					peer.setBitField(bitFieldMessage.getBitField());					
-					
+					BitFieldMessage bitFieldMsg = (BitFieldMessage) msg;
+					peer.setBitField(bitFieldMsg.getBitField());					
+
 					// Inspect bit field
 					if (!peer.amInterested() && amInterested(peer.getBitField())) {
 						peer.sendMessage(Message.INTERESTED);
@@ -329,26 +356,29 @@ public class RUBTClient extends Thread {
 					break;
 				case Message.ID_HAVE:
 					HaveMessage haveMsg = (HaveMessage) msg;
-										
+
 					if (peer.getBitField() == null) {
 						peer.initializeBitField(this.totalPieces);
 					}
 					peer.setBitField(haveMsg.getPieceIndex());
-					
-					peerBitField = peer.getBitField();
-					
-					if (!peer.amInterested() && amInterested(peerBitField)) {
+
+					if (!peer.amInterested() && amInterested(peer.getBitField())) {
 						peer.sendMessage(Message.INTERESTED);
 						peer.setLocalInterested(true);
 					}
 					break;
 				case Message.ID_REQUEST:
+					RequestMessage requestMsg = (RequestMessage) msg;
+
 					//TODO process request
 					break;
 				case Message.ID_PIECE:
-					
+					PieceMessage pieceMsg = (PieceMessage) msg;
 					break;
-				} 
+				default:
+					//TODO weird message id
+					break;
+				}					
 			} catch (InterruptedException ie) {
 				// This can happen either "randomly" or due to a shutdown - just
 				// continue the loop.
@@ -382,7 +412,7 @@ public class RUBTClient extends Thread {
 
 	/**
 	 * Puts a new task into the tasks queue for processing.
-	 * @param task
+	 * @param task the MessageTask to queue
 	 */
 	public void putMessageTask(MessageTask task) {
 		try {
@@ -392,10 +422,13 @@ public class RUBTClient extends Thread {
 			e.printStackTrace();
 		}
 	}
-	
+
+	/**
+	 * Determines which piece to request from the remote peer, and tells the peer to "download" it.
+	 * @param peer
+	 * @throws IOException
+	 */
 	private void chooseAndRequestPiece(final Peer peer) throws IOException {
-		// TODO: Determine which piece to request from the remote peer, and tell the
-		// peer to "download" it.
 		int pieceIndex;
 		int blockOffset;
 		int blockLength;
@@ -403,11 +436,11 @@ public class RUBTClient extends Thread {
 		// Inspect bit field and choose piece
 		byte[] peerBitField = peer.getBitField();
 		for (pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
-			if (!Utility.isSetBit(this.myBitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
+			if (!Utility.isSetBit(this.bitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
 				break;
 			}
 		}
-		
+
 		blockOffset = pieceIndex * this.pieceLength;
 
 		// Check if requesting last piece
@@ -417,24 +450,11 @@ public class RUBTClient extends Thread {
 		} else {
 			blockLength = this.pieceLength;
 		}
+
+		// Send request message
 		RequestMessage msg =  new RequestMessage(pieceIndex, blockOffset, blockLength);
 		peer.sendMessage(msg);
-	}
-	
-	/**
-	 * Determines whether the client is interested in downloading from the remote peer.
-	 * @param peerBitField
-	 * @return
-	 */
-	private boolean amInterested(byte[] peerBitField) {
-		// Inspect bit field
-		for (int pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
-			if (!Utility.isSetBit(this.myBitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
-				return true;
-			}
-		}
-		return false;
-	}
+	}	
 
 	/**
 	 * Gracefully shuts down the client;
@@ -442,7 +462,7 @@ public class RUBTClient extends Thread {
 	private void shutdown() {
 		System.out.println("Shutting down client.");
 		this.keepRunning = false;
-		
+
 		// Cancel any upcoming tracker announces
 		this.trackerTimer.cancel();
 		// Disconnect all peers
@@ -461,6 +481,7 @@ public class RUBTClient extends Thread {
 		}
 		// TODO: make sure all data is written to disk, all threads done
 	}
+
 
 	/**
 	 * Generates the randomized peer ID with the first four bytes hard-coded
@@ -484,4 +505,57 @@ public class RUBTClient extends Thread {
 		return peerId;
 	}
 
+	/**
+	 * Determines whether the client is interested in downloading from the remote peer.
+	 * @param peerBitField
+	 * @return
+	 */
+	private boolean amInterested(byte[] peerBitField) {
+		// Inspect bit field
+		for (int pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
+			if (!Utility.isSetBit(this.bitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Verify a piece by checking that its corresponding SHA-1 hash of the data
+	 * matches that in the torrent metadata file.
+	 * 
+	 * @author Julian Modesto
+	 * @param pieceIndex
+	 *            the zero-based index of the piece
+	 * @param block
+	 *            the block of data
+	 * @return true if the data is verifiably part of the file
+	 * @throws IOException
+	 * @throws NoSuchAlgorithmException
+	 * 
+	 */
+	public boolean verifyPiece(int pieceIndex, byte[] block)
+			throws IOException, NoSuchAlgorithmException {
+		byte[] hash = null;
+
+		MessageDigest sha = MessageDigest.getInstance("SHA-1");
+		hash = sha.digest(block);
+
+		if (Arrays.equals(this.tInfo.piece_hashes[pieceIndex].array(),
+				hash)) {
+			System.out.println("Piece verified.");
+			return true;
+		}
+		System.out.println("Piece does not match.");
+		return false;
+	}
+
+	private void initializePieces() {
+		this.pieces = new ByteBuffer[totalPieces];
+		for (int pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
+			if (!Utility.isSetBit(this.bitField, pieceIndex)) {
+				this.pieces[pieceIndex] = ByteBuffer.allocate(pieceLength); 
+			}
+		}
+	}
 }
