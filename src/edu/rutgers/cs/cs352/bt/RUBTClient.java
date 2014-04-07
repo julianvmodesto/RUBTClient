@@ -353,7 +353,8 @@ public class RUBTClient extends Thread {
 					peer.setLocalInterested(amInterested(peer.getBitField()));
 					if (!peer.amChoked() && peer.amInterested()) {
 						peer.sendMessage(Message.INTERESTED);
-						peer.setLocalInterested(true);
+					} else if (peer.amInterested()) {
+						peer.sendMessage(Message.INTERESTED);
 					}
 					break;
 				case Message.ID_HAVE:
