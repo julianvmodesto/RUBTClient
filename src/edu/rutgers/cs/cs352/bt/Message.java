@@ -4,6 +4,7 @@ package edu.rutgers.cs.cs352.bt;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * Represents a Peer Wire Protocol message, specifically those
@@ -77,9 +78,9 @@ public class Message {
 	 */
 	public static final Message UNINTERESTED = new Message(1, ID_UNINTERESTED);
 
-	public static final String[] ID_NAMES = { "choke", "unchoke", "interested",
-		"uninterested", "have", "bit field", "request", "piece", "cancel",
-	"keep alive" };
+	public static final String[] ID_NAMES = { "Choke", "Unchoke", "Interested",
+		"Uninterested", "Have", "BitField", "Request", "Piece", "Cancel",
+	"KeepAlive" };
 
 
 	private final int length;
@@ -152,7 +153,7 @@ public class Message {
 			din.readFully(block);
 			return new PieceMessage(pieceIndex, blockOffset, block);
 		}
-		
+
 		return null;
 	}
 
@@ -175,7 +176,18 @@ public class Message {
 
 		dout.flush();
 	}
-	
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append(ID_NAMES[id]);
+		builder.append("Message");
+		return builder.toString();
+	}
+
 	/**
 	 * A have message.
 	 *
@@ -195,6 +207,18 @@ public class Message {
 		@Override
 		public void writePayload(DataOutputStream dos) throws IOException {
 			dos.writeInt(this.pieceIndex);
+		}
+
+		/* (non-Javadoc)
+		 * @see java.lang.Object#toString()
+		 */
+		@Override
+		public String toString() {
+			StringBuilder builder = new StringBuilder();
+			builder.append("HaveMessage [pieceIndex=");
+			builder.append(pieceIndex);
+			builder.append("]");
+			return builder.toString();
 		}
 	}
 
@@ -217,6 +241,25 @@ public class Message {
 		@Override
 		public void writePayload(DataOutputStream dos) throws IOException {
 			dos.write(this.bitField);
+		}
+
+		/* (non-Javadoc)
+		 * @see java.lang.Object#toString()
+		 */
+		@Override
+		public String toString() {
+			StringBuilder builder = new StringBuilder();
+			builder.append("BitFieldMessage [");
+			if (bitField != null) {
+				builder.append("bitField=");
+				for (byte b : bitField)
+				{
+					// Add 0x100 then skip char(0) to left-pad bits with zeros
+					builder.append(Integer.toBinaryString(0x100 + b).substring(1));
+				}
+			}
+			builder.append("]");
+			return builder.toString();
 		}
 	}
 
@@ -263,6 +306,22 @@ public class Message {
 			dos.writeInt(this.blockOffset);
 			dos.writeInt(this.blockLength);
 		}
+
+		/* (non-Javadoc)
+		 * @see java.lang.Object#toString()
+		 */
+		@Override
+		public String toString() {
+			StringBuilder builder = new StringBuilder();
+			builder.append("RequestMessage [pieceIndex=");
+			builder.append(pieceIndex);
+			builder.append(", blockOffset=");
+			builder.append(blockOffset);
+			builder.append(", blockLength=");
+			builder.append(blockLength);
+			builder.append("]");
+			return builder.toString();
+		}
 	}
 
 	/**
@@ -307,6 +366,25 @@ public class Message {
 			dos.writeInt(this.pieceIndex);
 			dos.writeInt(this.blockOffset);
 			dos.write(this.block);
+		}
+
+		/* (non-Javadoc)
+		 * @see java.lang.Object#toString()
+		 */
+		@Override
+		public String toString() {
+			StringBuilder builder = new StringBuilder();
+			builder.append("PieceMessage [pieceIndex=");
+			builder.append(pieceIndex);
+			builder.append(", blockOffset=");
+			builder.append(blockOffset);
+			builder.append(", ");
+			if (block != null) {
+				builder.append("blockLength=");
+				builder.append(block.length);
+			}
+			builder.append("]");
+			return builder.toString();
 		}
 	}
 }

@@ -59,7 +59,7 @@ public class Peer extends Thread {
 	 */
 	public void setBitField(int bit) {
 		byte[] tempBitField = getBitField();
-		Utility.setBit(tempBitField, bit);
+		tempBitField = Utility.setBit(tempBitField, bit);
 		setBitField(tempBitField);
 	}
 	
@@ -192,7 +192,7 @@ public class Peer extends Thread {
 		// Update timestamp for keep-alive message timer
 		this.lastMessageTime = System.currentTimeMillis();
 
-		System.out.println("Sent " + Message.ID_NAMES[msg.getId()] + " message to the peer.");
+		System.out.println("Sent " + msg + " message to the peer.");
 	}
 
 	/**
@@ -240,7 +240,7 @@ public class Peer extends Thread {
 					// read message from socket
 					try {
 						Message msg = Message.read(this.in);
-						System.out.println("Queued message: " + Message.ID_NAMES[msg.getId()]);
+						System.out.println("Queued message: " + msg);
 						this.client.putMessageTask(new MessageTask(this,msg));
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
