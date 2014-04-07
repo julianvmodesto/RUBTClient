@@ -247,7 +247,7 @@ public class RUBTClient extends Thread {
 
 		initializePieces();
 
-		// Send "started" announce
+		// Send "started" announce and attempt to connect through ports 6881 - 6889
 		List<Peer> peers = null;
 		int announcePortIncrement;
 		boolean trackerFailure = true;
@@ -278,6 +278,7 @@ public class RUBTClient extends Thread {
 			this.trackerTimer.schedule(new TrackerAnnounceTask(this), interval * 1000);
 		}
 
+		// Start new thread to listen for "quit" from user
 		Thread userInput = new Thread()
 		{
 			public void run() {
@@ -287,7 +288,6 @@ public class RUBTClient extends Thread {
 				try {
 					line = br.readLine();
 					while (!line.equals("quit")) {
-
 					}
 					shutdown();
 				} catch (IOException ioe) {
@@ -302,7 +302,7 @@ public class RUBTClient extends Thread {
 		while (this.keepRunning) {
 			try {
 				MessageTask task = this.tasks.take();
-				// TODO: Process the task
+				// Process the task
 				Message msg = task.getMessage();
 				Peer peer = task.getPeer();
 
@@ -388,8 +388,6 @@ public class RUBTClient extends Thread {
 				npe.printStackTrace();
 			}
 		}
-
-		this.shutdown();
 	}
 
 	/**
@@ -427,7 +425,7 @@ public class RUBTClient extends Thread {
 	 */
 	private void chooseAndRequestPiece(final Peer peer) throws IOException {
 		int pieceIndex;
-		int blockOffset;
+		int blockOffset = 0;
 		int blockLength;
 
 		// Inspect bit field and choose piece
@@ -438,14 +436,12 @@ public class RUBTClient extends Thread {
 			}
 		}
 
-		blockOffset = pieceIndex * this.pieceLength;
-
 		// Check if requesting last piece
 		if (pieceIndex == totalPieces - 1) {
 			// Request the last irregularly-sized piece
-			blockLength = fileLength % this.pieceLength;
+			blockLength = fileLength % BLOCK_LENGTH;
 		} else {
-			blockLength = this.pieceLength;
+			blockLength = BLOCK_LENGTH;
 		}
 
 		// Send request message
@@ -555,8 +551,28 @@ public class RUBTClient extends Thread {
 			}
 		}
 	}
-	
+
 	private void buildBlocks(PieceMessage msg) {
-		
+		int pieceIndex;
+		int blockOffset;
+		int blockLength;
+
+		// Inspect bit field and choose piece
+		byte[] peerBitField = peer.getBitField();
+		for (pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
+			if (!Utility.isSetBit(this.bitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
+				break;
+			}
+		}
+
+		blockOffset = 0;
+
+		// Check if block is from last piece
+		if (pieceIndex == totalPieces - 1) {
+			// Request the last irregularly-sized piece
+			blockLength = fileLength % BLOCK_LENGTH;
+		} else {
+			blockLength = BLOCK_LENGTH;
+		}
 	}
 }
