@@ -3,7 +3,10 @@ package edu.rutgers.cs.cs352.bt;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -137,10 +140,10 @@ public class Tracker {
 	 * @param left the number of bytes remaining in the file
 	 * @param event the announce event (optional)
 	 * @return the returned list of peers, or {@code null} if an error occurred.
-	 * @throws IOException 
 	 * @throws BencodingException 
+	 * @throws IOException 
 	 */
-	public List<Peer> announce(int downloaded, int uploaded, int left, String event) throws IOException, BencodingException{
+	public List<Peer> announce(int downloaded, int uploaded, int left, String event) throws BencodingException, IOException {
 		// Build HTTP GET request from the announce URL from the metainfo
 		StringBuffer request = new StringBuffer();
 		request.append(this.announceUrl);
@@ -159,19 +162,33 @@ public class Tracker {
 			request.append(event);
 		}
 
-		URL url = new URL(request.toString());
+		URL url;
+		try {
+			url = new URL(request.toString());
+		} catch (MalformedURLException murle) {
+			throw new MalformedURLException("A mlformed URL exception was encountered.");
+		}
 		HttpURLConnection httpConnection;
 		try {
 			httpConnection = (HttpURLConnection) url
 					.openConnection();
-			httpConnection.setRequestMethod("GET");
 		} catch (IOException ioe) {
 			throw new IOException("An I/O exception occurred when openning HTTP connection");
+		}
+		try {
+			httpConnection.setRequestMethod("GET");
+		} catch (ProtocolException e) {
+			throw new ProtocolException("A protocol exception was encountered.");
 		}
 
 		// Response code used to find if connection was success or failure (and
 		// reason for failure)
-		int responseCode = httpConnection.getResponseCode();
+		int responseCode;
+		try {
+			responseCode = httpConnection.getResponseCode();
+		} catch (IOException e) {
+			throw new IOException("An I/O exception occurred when getting the HTTP response code");
+		}
 		System.out.println("Response Code: " + responseCode);
 
 		// Receive the response
