@@ -225,8 +225,17 @@ public class Message {
 	 *
 	 */
 	public static class RequestMessage extends Message {
+		/**
+		 * The integer specifying the zero-based piece index.
+		 */
 		private final int pieceIndex;
+		/**
+		 * The integer specifying the zero-based byte offset within the piece.
+		 */
 		private final int blockOffset;
+		/**
+		 * The integer specifying the requested length.
+		 */
 		private final int blockLength;
 
 		public RequestMessage(int pieceIndex, int blockOffset, int blockLength) {
@@ -261,8 +270,17 @@ public class Message {
 	 *
 	 */
 	public static class PieceMessage extends Message {
+		/**
+		 * The integer specifying the zero-based piece index.
+		 */
 		private final int pieceIndex;
+		/**
+		 * The integer specifying the zero-based byte offset within the piece.
+		 */
 		private final int blockOffset;
+		/**
+		 * The block of data, which is a subset of the piece specified by index.
+		 */
 		private final byte[] block;
 
 		public PieceMessage(int pieceIndex, int blockOffset, byte block[]) {
