@@ -258,18 +258,15 @@ public class RUBTClient extends Thread {
 			try {
 				peers = this.tracker.announce(this.getDownloaded(), this.getUploaded(), this.getLeft(), "started");
 				trackerFailure = false;
-			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-				this.tracker.setPort(this.tracker.getPort() + announcePortIncrement);
-				System.err.println("Communication with tracker failed.");
+				System.out.println("Connected to tracker on port " + this.tracker.getPort());
+			} catch (IOException ioe) {
+				this.tracker.setPort(this.tracker.getPort() + 1);
+				System.err.println("I/O exception encountered and communication with tracker failed.");
 				trackerFailure = true;
-				e1.printStackTrace();
 			} catch (BencodingException e1) {
-				// TODO Auto-generated catch block
-				this.tracker.setPort(this.tracker.getPort() + announcePortIncrement);
+				this.tracker.setPort(this.tracker.getPort() + 1);
 				System.err.println("Tracker response invalid.");
 				trackerFailure = true;
-				e1.printStackTrace();
 			}
 		}
 
@@ -557,5 +554,9 @@ public class RUBTClient extends Thread {
 				this.pieces[pieceIndex] = ByteBuffer.allocate(pieceLength); 
 			}
 		}
+	}
+	
+	private void buildBlocks(PieceMessage msg) {
+		
 	}
 }
