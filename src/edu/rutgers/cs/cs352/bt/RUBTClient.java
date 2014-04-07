@@ -223,18 +223,29 @@ public class RUBTClient extends Thread {
 			// Exit right now, since nothing else was started yet
 			return;
 		}
+		
+		//TODO update from output file
+		// Set client bit field
+		int bytes = (int) Math.ceil((double)totalPieces/8);
+		byte[] tempBitField = new byte[bytes];
+		
+		for (int i = 0; i < tempBitField.length; i++) {
+			tempBitField[i] = 0;
+		}
+		this.myBitField = tempBitField;
 
 		// Send "started" announce
 		List<Peer> peers = null;
 		try {
 			peers = this.tracker.announce(this.getDownloaded(), this.getUploaded(), this.getLeft(), "started");
-		} catch (IOException e) {
+		} catch (IOException e1) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (BencodingException e) {
+			e1.printStackTrace();
+		} catch (BencodingException e1) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			e1.printStackTrace();
 		}
+		
 		this.addPeers(peers);
 		{
 			// Schedule the first "regular" announce - the rest are schedule by the
@@ -306,14 +317,12 @@ public class RUBTClient extends Thread {
 					peer.setRemoteInterested(false);
 					break;
 				case Message.ID_BIT_FIELD:
-					// Inspect bit field
+					// Set peer bit field
 					BitFieldMessage bitFieldMessage = (BitFieldMessage) msg;
+					peer.setBitField(bitFieldMessage.getBitField());					
 					
-					peer.setBitField(bitFieldMessage.getBitField());
-					peerBitField = peer.getBitField();
-					
-					
-					if (amInterested(peerBitField)) {
+					// Inspect bit field
+					if (!peer.amInterested() && amInterested(peer.getBitField())) {
 						peer.sendMessage(Message.INTERESTED);
 						peer.setLocalInterested(true);
 					}
@@ -328,7 +337,7 @@ public class RUBTClient extends Thread {
 					
 					peerBitField = peer.getBitField();
 					
-					if (amInterested(peerBitField)) {
+					if (!peer.amInterested() && amInterested(peerBitField)) {
 						peer.sendMessage(Message.INTERESTED);
 						peer.setLocalInterested(true);
 					}
@@ -337,6 +346,7 @@ public class RUBTClient extends Thread {
 					//TODO process request
 					break;
 				case Message.ID_PIECE:
+					
 					break;
 				} 
 			} catch (InterruptedException ie) {
@@ -393,7 +403,6 @@ public class RUBTClient extends Thread {
 		// Inspect bit field and choose piece
 		byte[] peerBitField = peer.getBitField();
 		for (pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
-			System.out.println("PIECES" + pieceIndex + "/" + totalPieces);
 			if (!Utility.isSetBit(this.myBitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
 				break;
 			}
@@ -441,9 +450,8 @@ public class RUBTClient extends Thread {
 			peer.disconnect();
 		}
 
-		// FIXME: Tracker parameters for "stopped"
 		try {
-			this.tracker.announce(0, 0, 0, "stopped");
+			this.tracker.announce(this.getDownloaded(), this.getUploaded(), this.getLeft(), "stopped");
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

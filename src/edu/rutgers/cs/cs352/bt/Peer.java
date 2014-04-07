@@ -249,7 +249,8 @@ public class Peer extends Thread {
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
-						System.out.println("Peer.run()");
+						//TODO remove break and handle I/O Exception properly
+						break;
 					}
 				}
 			}
@@ -257,8 +258,6 @@ public class Peer extends Thread {
 		} catch (IOException ioe) {
 			// TODO Auto-generated catch block
 			ioe.printStackTrace();
-		} finally {
-			this.disconnect();
 		}
 	}
 
