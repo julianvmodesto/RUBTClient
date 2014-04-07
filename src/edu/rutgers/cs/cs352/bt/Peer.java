@@ -2,6 +2,7 @@ package edu.rutgers.cs.cs352.bt;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -54,18 +55,31 @@ public class Peer extends Thread {
 
 	/**
 	 * @param bit the bit to set
+	 * @return 
 	 */
-	public synchronized void setBitField(int bit) {
-		Utility.setBit(this.bitField, bit);
+	public void setBitField(int bit) {
+		byte[] tempBitField = getBitField();
+		Utility.setBit(tempBitField, bit);
+		setBitField(tempBitField);
+	}
+	
+	/**
+	 * 
+	 * @param bitField the bitField to set
+	 */
+	public synchronized void setBitField(byte[] bitField) {
+		this.bitField = bitField;
 	}
 
-	public synchronized void initializeBitField(int totalPieces) {
+	public void initializeBitField(int totalPieces) {
 		int bytes = (int) Math.ceil((double)totalPieces/8);
-		this.bitField = new byte[bytes];
+		byte[] tempBitField = new byte[bytes];
 		
-		for (int i = 0; i < this.bitField.length; i++) {
-			this.bitField[i] = 0;
+		for (int i = 0; i < tempBitField.length; i++) {
+			tempBitField[i] = 0;
 		}
+		
+		setBitField(tempBitField);
 	}
 	
 	private final RUBTClient client;
@@ -176,6 +190,7 @@ public class Peer extends Thread {
 		if(this.out == null){
 			throw new IOException("Output stream is null, cannot write message to " + this);
 		}
+		
 		msg.write(this.out);
 
 		// Update timestamp for keep-alive message timer
@@ -234,6 +249,7 @@ public class Peer extends Thread {
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
+						System.out.println("Peer.run()");
 					}
 				}
 			}
@@ -279,6 +295,8 @@ public class Peer extends Thread {
 	public void disconnect() {
 		// Disconnect the socket, close data streams, catch all exceptions
 		try {
+			this.keepRunning = false;
+			
 			this.socket.close();
 
 			this.in.close();

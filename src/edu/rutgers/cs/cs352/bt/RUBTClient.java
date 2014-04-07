@@ -1,12 +1,13 @@
 package edu.rutgers.cs.cs352.bt;
 
+import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import edu.rutgers.cs.cs352.bt.Message.BitFieldMessage;
 import edu.rutgers.cs.cs352.bt.Message.HaveMessage;
 import edu.rutgers.cs.cs352.bt.Message.RequestMessage;
 import edu.rutgers.cs.cs352.bt.exceptions.BencodingException;
@@ -240,6 +242,26 @@ public class RUBTClient extends Thread {
 			int interval = this.tracker.getInterval();
 			this.trackerTimer.schedule(new TrackerAnnounceTask(this), interval * 1000);
 		}
+		
+		Thread userInput = new Thread()
+	    {
+	        public void run() {
+	        	final BufferedReader br = new BufferedReader(new InputStreamReader(
+	    				System.in));
+	    		String line = null;
+	    		try {
+	    			line = br.readLine();
+	    			while (!line.equals("quit")) {
+	    				
+	    			}
+	    			shutdown();
+	    		} catch (IOException ioe) {
+	    			// TODO Auto-generated catch block
+	    			ioe.printStackTrace();
+	    		}
+	        }
+	    };
+	    userInput.start();
 
 		// Main loop:
 		while (this.keepRunning) {
@@ -251,6 +273,8 @@ public class RUBTClient extends Thread {
 
 				System.out.println("Processing message: " + Message.ID_NAMES[msg.getId()]);
 
+				byte[] peerBitField;
+				
 				switch (msg.getId()) {
 				case Message.ID_CHOKE:
 					// Update internal state
@@ -283,21 +307,28 @@ public class RUBTClient extends Thread {
 					break;
 				case Message.ID_BIT_FIELD:
 					// Inspect bit field
-					if (amInterested(peer)) {
+					BitFieldMessage bitFieldMessage = (BitFieldMessage) msg;
+					
+					peer.setBitField(bitFieldMessage.getBitField());
+					peerBitField = peer.getBitField();
+					
+					
+					if (amInterested(peerBitField)) {
 						peer.sendMessage(Message.INTERESTED);
 						peer.setLocalInterested(true);
 					}
 					break;
 				case Message.ID_HAVE:
 					HaveMessage haveMsg = (HaveMessage) msg;
-					
+										
 					if (peer.getBitField() == null) {
-						
 						peer.initializeBitField(this.totalPieces);
 					}
 					peer.setBitField(haveMsg.getPieceIndex());
 					
-					if (amInterested(peer)) {
+					peerBitField = peer.getBitField();
+					
+					if (amInterested(peerBitField)) {
 						peer.sendMessage(Message.INTERESTED);
 						peer.setLocalInterested(true);
 					}
@@ -316,9 +347,8 @@ public class RUBTClient extends Thread {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (NullPointerException npe) {
-				System.err.println("ERROR");
-				continue;
-				//TODO don't continue...
+				// TODO Auto-generated catch block
+				npe.printStackTrace();
 			}
 		}
 
@@ -384,13 +414,11 @@ public class RUBTClient extends Thread {
 	
 	/**
 	 * Determines whether the client is interested in downloading from the remote peer.
-	 * @param peer
+	 * @param peerBitField
 	 * @return
 	 */
-	private synchronized boolean amInterested(final Peer peer) {
-		// Inspect bit field and choose piece
-		byte[] peerBitField = peer.getBitField();
-		
+	private boolean amInterested(byte[] peerBitField) {
+		// Inspect bit field
 		for (int pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
 			if (!Utility.isSetBit(this.myBitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
 				return true;
@@ -404,6 +432,8 @@ public class RUBTClient extends Thread {
 	 */
 	private void shutdown() {
 		System.out.println("Shutting down client.");
+		this.keepRunning = false;
+		
 		// Cancel any upcoming tracker announces
 		this.trackerTimer.cancel();
 		// Disconnect all peers
