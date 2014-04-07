@@ -109,8 +109,12 @@ public class RUBTClient extends Thread {
 
 	private int port = 6881;
 
-
+	
 	private byte[] bitField;
+	/**
+	 * Indicates that the first half of the piece is buffered.
+	 */
+	private byte[] halfBitField;
 
 	/**
 	 * An array of ByteBuffers to hold pieces assembled from blocks.
@@ -236,14 +240,13 @@ public class RUBTClient extends Thread {
 		}
 
 		//TODO update from output file
-		// Set client bit field
 		int bytes = (int) Math.ceil((double)totalPieces/8);
-		byte[] tempBitField = new byte[bytes];
 
-		for (int i = 0; i < tempBitField.length; i++) {
-			tempBitField[i] = 0;
-		}
-		this.bitField = tempBitField;
+		// Set client bit field
+		this.bitField = new byte[bytes];
+		// Set client half bit field
+		this.halfBitField = new byte[bytes];
+		
 
 		initializePieces();
 
@@ -319,6 +322,7 @@ public class RUBTClient extends Thread {
 					// Update internal state
 					peer.setLocalChoked(false);
 
+					peer.setLocalInterested(amInterested(peer.getBitField()));
 					if (!peer.amChoked() && peer.amInterested()) {
 						this.chooseAndRequestPiece(peer);
 					}
@@ -346,7 +350,8 @@ public class RUBTClient extends Thread {
 					peer.setBitField(bitFieldMsg.getBitField());					
 
 					// Inspect bit field
-					if (!peer.amInterested() && amInterested(peer.getBitField())) {
+					peer.setLocalInterested(amInterested(peer.getBitField()));
+					if (!peer.amChoked() && peer.amInterested()) {
 						peer.sendMessage(Message.INTERESTED);
 						peer.setLocalInterested(true);
 					}
@@ -359,7 +364,8 @@ public class RUBTClient extends Thread {
 					}
 					peer.setBitField(haveMsg.getPieceIndex());
 
-					if (!peer.amInterested() && amInterested(peer.getBitField())) {
+					peer.setLocalInterested(amInterested(peer.getBitField()));
+					if (!peer.amChoked() && peer.amInterested()) {
 						peer.sendMessage(Message.INTERESTED);
 						peer.setLocalInterested(true);
 					}
@@ -371,6 +377,16 @@ public class RUBTClient extends Thread {
 					break;
 				case Message.ID_PIECE:
 					PieceMessage pieceMsg = (PieceMessage) msg;
+					
+					// Updated downloaded
+					this.downloaded = this.downloaded + pieceMsg.getBlock().length;
+					
+					buildBlocks(pieceMsg);
+					
+					peer.setLocalInterested(amInterested(peer.getBitField()));
+					if (!peer.amChoked() && peer.amInterested()) {
+						this.chooseAndRequestPiece(peer);
+					}
 					break;
 				default:
 					//TODO weird message id
@@ -386,6 +402,9 @@ public class RUBTClient extends Thread {
 			} catch (NullPointerException npe) {
 				// TODO Auto-generated catch block
 				npe.printStackTrace();
+			} catch (NoSuchAlgorithmException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 	}
@@ -425,7 +444,7 @@ public class RUBTClient extends Thread {
 	 */
 	private void chooseAndRequestPiece(final Peer peer) throws IOException {
 		int pieceIndex;
-		int blockOffset = 0;
+		int blockOffset;
 		int blockLength;
 
 		// Inspect bit field and choose piece
@@ -442,6 +461,13 @@ public class RUBTClient extends Thread {
 			blockLength = fileLength % BLOCK_LENGTH;
 		} else {
 			blockLength = BLOCK_LENGTH;
+		}
+		
+		// Set offset
+		if (!Utility.isSetBit(this.halfBitField, pieceIndex)) {
+			blockOffset = 0;
+		} else {
+			blockOffset = BLOCK_LENGTH;
 		}
 
 		// Send request message
@@ -504,12 +530,18 @@ public class RUBTClient extends Thread {
 	 * @return
 	 */
 	private boolean amInterested(byte[] peerBitField) {
+		if (this.left == 0) {
+			System.out.println("Nothing left!");
+			return false;
+		}
+		
 		// Inspect bit field
 		for (int pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
 			if (!Utility.isSetBit(this.bitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
 				return true;
 			}
 		}
+		System.out.println("Not interested!");
 		return false;
 	}
 
@@ -552,27 +584,62 @@ public class RUBTClient extends Thread {
 		}
 	}
 
-	private void buildBlocks(PieceMessage msg) {
-		int pieceIndex;
-		int blockOffset;
-		int blockLength;
-
-		// Inspect bit field and choose piece
-		byte[] peerBitField = peer.getBitField();
-		for (pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
-			if (!Utility.isSetBit(this.bitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
-				break;
-			}
-		}
-
-		blockOffset = 0;
-
+	private void buildBlocks(PieceMessage msg) throws NoSuchAlgorithmException, IOException {
+		int pieceIndex = msg.getPieceIndex();
+		int blockOffset = msg.getBlockOffset();
+		byte[] block = msg.getBlock();
+		
 		// Check if block is from last piece
 		if (pieceIndex == totalPieces - 1) {
-			// Request the last irregularly-sized piece
-			blockLength = fileLength % BLOCK_LENGTH;
+			Utility.setBit(this.halfBitField, pieceIndex);
+			
+			// Verify last piece
+			pieces[pieceIndex].put(block);
+			if (verifyPiece(pieceIndex, pieces[pieceIndex].array())) {
+				System.out.println("Writing to file: last piece.");
+				// Write last piece
+				outFile.write(block, this.fileLength - block.length, block.length);
+				
+				// Update bit fields and left
+				Utility.setBit(this.bitField, pieceIndex);
+				
+				this.left = this.left - block.length;
+			} else {
+				// Clear ByteBuffer
+				pieces[pieceIndex].clear();
+				
+				// Clear bit fields
+				Utility.resetBit(this.halfBitField, pieceIndex);
+			}
 		} else {
-			blockLength = BLOCK_LENGTH;
+			// Build blocks into piece
+			if (blockOffset == 0) {
+				Utility.setBit(this.halfBitField, pieceIndex);
+				
+				pieces[pieceIndex].put(block);
+			} else {
+				pieces[pieceIndex].put(block, blockOffset, block.length);
+				
+				byte[] piece = pieces[pieceIndex].array();
+				int pieceOffset = this.pieceLength * pieceIndex;
+				// Verify piece
+				if (verifyPiece(pieceIndex, piece)) {
+					System.out.println("Writing to file: piece number " + pieceIndex);
+					// Write piece
+					outFile.write(piece, pieceOffset, this.pieceLength);
+					
+					// Update bit field and left
+					Utility.setBit(this.bitField, pieceIndex);
+					
+					this.left = this.left - this.pieceLength;
+				} else {
+					// Clear ByteBuffer
+					pieces[pieceIndex].clear();
+					
+					// Clear bit field
+					Utility.resetBit(this.halfBitField, pieceIndex);
+				}
+			}
 		}
 	}
 }

@@ -65,7 +65,11 @@ public class Utility {
 	}
 
 
-
+	/**
+	 * Sets the bit in the byte array.
+	 * @param arr the byte array to change
+	 * @param bit the bit to set
+	 */
 	public static void setBit(byte[] arr, int bit) {		
 		int index = bit / 8; // Get the index of the array for the byte with
 		// this bit
@@ -74,6 +78,22 @@ public class Utility {
 		byte B = arr[index];
 
 		arr[index] = (byte) (B | (1 << bitPosition));
+		
+	}
+	
+	/**
+	 * Clears the bit in the byte array.
+	 * @param arr the byte array to change
+	 * @param bit the bit to clear
+	 */
+	public static void resetBit(byte[] arr, int bit) {		
+		int index = bit / 8; // Get the index of the array for the byte with
+		// this bit
+		int bitPosition = bit % 8; // Position of this bit in a byte
+
+		byte B = arr[index];
+
+		arr[index] = (byte) (B &= ~(1 << bitPosition));
 	}
 
 	public static boolean isSetBit(byte[] data, int pos) {

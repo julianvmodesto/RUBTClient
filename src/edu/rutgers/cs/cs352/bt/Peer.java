@@ -75,10 +75,6 @@ public class Peer extends Thread {
 		int bytes = (int) Math.ceil((double)totalPieces/8);
 		byte[] tempBitField = new byte[bytes];
 		
-		for (int i = 0; i < tempBitField.length; i++) {
-			tempBitField[i] = 0;
-		}
-		
 		setBitField(tempBitField);
 	}
 	
