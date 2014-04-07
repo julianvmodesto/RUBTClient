@@ -224,12 +224,12 @@ public class Tracker {
 		}
 
 		// Catch warning message
-		String warningMessage = null;
-		if (responseMap.containsKey(KEY_WARNING_MESSAGE)) {
-			warningMessage = (String) responseMap.get(KEY_WARNING_MESSAGE);
-			System.out.println("Warning:");
-			System.out.println(warningMessage);
-		}
+//		String warningMessage = null;
+//		if (responseMap.containsKey(KEY_WARNING_MESSAGE)) {
+//			warningMessage = (String) responseMap.get(KEY_WARNING_MESSAGE);
+//			System.out.println("Warning:");
+//			System.out.println(warningMessage);
+//		}
 
 		// Set the interval
 		if (responseMap.containsKey(KEY_INTERVAL)) {

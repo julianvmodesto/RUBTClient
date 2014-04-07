@@ -322,7 +322,6 @@ public class RUBTClient extends Thread {
 					// Update internal state
 					peer.setLocalChoked(false);
 
-					peer.setLocalInterested(amInterested(peer.getBitField()));
 					if (!peer.amChoked() && peer.amInterested()) {
 						this.chooseAndRequestPiece(peer);
 					}
@@ -383,7 +382,6 @@ public class RUBTClient extends Thread {
 					
 					buildBlocks(pieceMsg);
 					
-					peer.setLocalInterested(amInterested(peer.getBitField()));
 					if (!peer.amChoked() && peer.amInterested()) {
 						this.chooseAndRequestPiece(peer);
 					}
