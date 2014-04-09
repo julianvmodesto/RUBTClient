@@ -217,7 +217,7 @@ public class RUBTClient extends Thread {
 		this.tInfo = tInfo;
 		this.outFileName = outFile;
 		this.tracker = new Tracker(this.peerId, this.tInfo.info_hash.array(),
-				this.tInfo.announce_url.toString(), this.port, this);
+				this.tInfo.announce_url.toString(), this.port);
 
 		this.downloaded = 0;
 		this.uploaded = 0;
@@ -423,21 +423,9 @@ public class RUBTClient extends Thread {
 			if ((newPeer.getIp().equals("128.6.171.130") || newPeer.getIp().equals("128.6.171.131")) && !this.peers.contains(newPeer)) {
 				this.peers.add(newPeer);
 				System.out.println("Connecting to new peer: " + newPeer);
+				newPeer.setTasks(tasks);
 				newPeer.start();
 			}
-		}
-	}
-
-	/**
-	 * Puts a new task into the tasks queue for processing.
-	 * @param task the MessageTask to queue
-	 */
-	public void putMessageTask(MessageTask task) {
-		try {
-			this.tasks.put(task);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 	}
 

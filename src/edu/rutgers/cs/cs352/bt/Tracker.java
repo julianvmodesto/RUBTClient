@@ -24,7 +24,6 @@ import edu.rutgers.cs.cs352.bt.util.Utility;
  * @author Julian Modesto
  */
 public class Tracker {
-	private final RUBTClient client;
 	
 	/**
 	 * Key used to retrieve the request error message.
@@ -125,12 +124,11 @@ public class Tracker {
 	 * @param announceUrl the announce URL of the tracker
 	 * @param port the listen port for the local client.
 	 */
-	public Tracker(final byte[] clientId, final byte[] infoHash, final String announceUrl, final int port, final RUBTClient client){
+	public Tracker(final byte[] clientId, final byte[] infoHash, final String announceUrl, final int port){
 		this.infoHash = infoHash;
 		this.clientId = clientId;
 		this.announceUrl = announceUrl;
 		this.port = port;
-		this.client = client;
 	}
 
 	/**
@@ -214,14 +212,14 @@ public class Tracker {
 			throw new BencodingException("A bencoding exception occurred when decoding tracker response.");
 		}
 
-		// Catch request failure
-		String errorMessage = null;
-		if (responseMap.containsKey(KEY_FAILURE_REASON)) {
-			errorMessage = (String) responseMap.get(KEY_FAILURE_REASON);
-			System.err.println("Error: request failed");
-			System.err.println(errorMessage);
-			System.exit(1);
-		}
+//		// Catch request failure
+//		String errorMessage = null;
+//		if (responseMap.containsKey(KEY_FAILURE_REASON)) {
+//			errorMessage = (String) responseMap.get(KEY_FAILURE_REASON);
+//			System.err.println("Error: request failed");
+//			System.err.println(errorMessage);
+//			System.exit(1);
+//		}
 
 		// Catch warning message
 //		String warningMessage = null;
@@ -289,7 +287,7 @@ public class Tracker {
 			}
 
 			// Add new peer
-			Peer peer = new Peer(peerId, peerIP, peerPort, this.infoHash, this.clientId, this.client);
+			Peer peer = new Peer(peerId, peerIP, peerPort, this.infoHash, this.clientId);
 			peerList.add(peer);
 
 			System.out.println("Peer in torrent: " + peer);

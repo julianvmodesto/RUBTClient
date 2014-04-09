@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import edu.rutgers.cs.cs352.bt.util.Utility;
 
@@ -43,8 +44,16 @@ public class Peer extends Thread {
 
 	private int port;
 	private Socket socket;
+	
+	private LinkedBlockingQueue<MessageTask> tasks;
 
 	private byte[] bitField;
+	
+	private byte[] piece;
+	private int pieceLength;
+	private int pieceIndex;
+	private int blockNumber;
+	private int blockOffset;
 
 	/**
 	 * @return the bitField
@@ -78,15 +87,12 @@ public class Peer extends Thread {
 		setBitField(tempBitField);
 	}
 	
-	private final RUBTClient client;
-
-	public Peer(byte[] peerId, String ip, Integer port, byte[] infoHash, byte[] clientId, RUBTClient client) {
+	public Peer(byte[] peerId, String ip, Integer port, byte[] infoHash, byte[] clientId) {
 		this.peerId = peerId;
 		this.ip = ip;
 		this.port = port;
 		this.infoHash = infoHash;
 		this.clientId = clientId;
-		this.client = client;
 	}
 
 	// Set default states
@@ -241,12 +247,15 @@ public class Peer extends Thread {
 					try {
 						Message msg = Message.read(this.in);
 						System.out.println("Queued message: " + msg);
-						this.client.putMessageTask(new MessageTask(this,msg));
+						this.tasks.put(new MessageTask(this,msg));
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 						//TODO remove break and handle I/O Exception properly
 						break;
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
 					}
 				}
 			}
@@ -463,6 +472,10 @@ public class Peer extends Thread {
 		System.out.println("Handshake validated for " + this);
 
 		return true;
+	}
+
+	public void setTasks(LinkedBlockingQueue<MessageTask> tasks) {
+		this.tasks = tasks;
 	}
 
 }
