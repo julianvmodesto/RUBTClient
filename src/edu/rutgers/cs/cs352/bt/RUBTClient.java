@@ -393,7 +393,7 @@ public class RUBTClient extends Thread {
 					}
 					break;
 				default:
-					//TODO weird message id
+					System.out.println("Could not process message of unknown type: " + msg.getId());
 					break;
 				}					
 			} catch (InterruptedException ie) {
@@ -626,7 +626,8 @@ public class RUBTClient extends Thread {
 			if (verifyPiece(pieceIndex, pieces[pieceIndex].array())) {
 				System.out.println("Writing to file: last piece.");
 				// Write piece
-				outFile.write(block, pieceOffset, pieceLength);
+				outFile.seek(pieceIndex*this.pieceLength);
+				outFile.write(block);
 
 				// Update bit fields and left
 				this.bitField = Utility.setBit(this.bitField, pieceIndex);
