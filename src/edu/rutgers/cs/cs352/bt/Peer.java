@@ -2,7 +2,6 @@ package edu.rutgers.cs.cs352.bt;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -14,6 +13,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import edu.rutgers.cs.cs352.bt.Message.PieceMessage;
+import edu.rutgers.cs.cs352.bt.Message.RequestMessage;
 import edu.rutgers.cs.cs352.bt.util.Utility;
 
 /**
@@ -53,10 +54,16 @@ public class Peer extends Thread {
 
 	private byte[] bitField;
 	
+
+	/**
+	 * The block size that will be requested, 16K.
+	 */
+	public static final int BLOCK_LENGTH = 2 ^ 14; // = 16Kb
+	// We should be requesting 16K blocks, while pieces are 32 blocks
+	
 	private byte[] piece;
 	private int pieceLength;
 	private int pieceIndex;
-	private int blockNumber;
 	private int blockOffset;
 
 	/**
@@ -199,7 +206,7 @@ public class Peer extends Thread {
 		
 		msg.write(this.out);
 
-		// Update timestamp for keep-alive message timer
+		// Update time stamp for keep-alive message timer
 		this.lastMessageTime = System.currentTimeMillis();
 
 		LOGGER.log(Level.INFO,"Sent " + msg + " message to the peer.");
@@ -209,7 +216,7 @@ public class Peer extends Thread {
 	 * Flag to keep the main loop running. Once false, the peer *should* exit.
 	 */
 	private volatile boolean keepRunning = true;
-
+	
 	@Override
 	public void run() {
 		try {
@@ -250,16 +257,21 @@ public class Peer extends Thread {
 					// read message from socket
 					try {
 						Message msg = Message.read(this.in);
-						LOGGER.log(Level.INFO,"Queued message: " + msg);
-						this.tasks.put(new MessageTask(this,msg));
-					} catch (IOException e) {
+						
+						if (msg.getId() == Message.ID_PIECE) {
+							buildPiece(msg);
+						} else {
+							LOGGER.log(Level.INFO,"Queued message: " + msg);
+							this.tasks.put(new MessageTask(this,msg));
+						}
+					} catch (IOException ioe) {
 						// TODO Auto-generated catch block
-						e.printStackTrace();
+						ioe.printStackTrace();
 						//TODO remove break and handle I/O Exception properly
 						break;
-					} catch (InterruptedException e) {
+					} catch (InterruptedException ie) {
 						// TODO Auto-generated catch block
-						e.printStackTrace();
+						ie.printStackTrace();
 					}
 				}
 			}
@@ -282,7 +294,7 @@ public class Peer extends Thread {
 		} catch (UnknownHostException uhe) {
 			LOGGER.log(Level.WARNING,"The IP address of the host could not be determined from " + this.ip + ".", uhe);
 		} catch (IOException ioe) {
-			LOGGER.log(Level.WARNING,"Error: an I/O error occurred.",ioe);
+			LOGGER.log(Level.WARNING,"An I/O error occurred.",ioe);
 		}
 
 		// Check if connected once but not closed
@@ -480,4 +492,33 @@ public class Peer extends Thread {
 		this.tasks = tasks;
 	}
 
+	public void requestPiece(int pieceIndex, int pieceLength) throws IOException {
+		this.pieceIndex = pieceIndex;
+		this.pieceLength = pieceLength;
+		this.piece = new byte[pieceLength];
+		
+		this.blockOffset = 0;
+		
+		RequestMessage msg = new RequestMessage(this.pieceIndex, this.blockOffset, BLOCK_LENGTH);
+		sendMessage(msg);
+	}
+
+
+	private void buildPiece(Message msg) throws InterruptedException {
+		if (msg.getId() == Message.ID_PIECE) {
+			PieceMessage pieceMsg = (PieceMessage) msg;
+			if (pieceMsg.getPieceIndex() != this.pieceIndex) {
+				LOGGER.log(Level.WARNING, "Incorrect piece received from " + pieceMsg);
+			} else if (pieceMsg.getBlockOffset() != this.blockOffset) {
+				LOGGER.log(Level.WARNING, "Incorrect block offset received from " + pieceMsg);
+			} else {
+				if (blockOffset + BLOCK_LENGTH >= this.pieceLength) {
+					PieceMessage returnMsg = new PieceMessage(this.pieceIndex, 0, this.piece);
+					tasks.put(new MessageTask(this, returnMsg));
+				} else {
+					System.arraycopy(pieceMsg.getBlock(), 0, this.piece, this.blockOffset, BLOCK_LENGTH);
+				}
+			}
+		}
+	}
 }

@@ -45,7 +45,7 @@ public class RUBTClient extends Thread {
 		
 		// Check number/type of arguments
 		if (args.length != 2) {
-			LOGGER.log(Level.SEVERE,"Error: two arguments required");
+			LOGGER.log(Level.SEVERE,"Two arguments required");
 			System.exit(1);
 		}
 
@@ -75,7 +75,7 @@ public class RUBTClient extends Thread {
 		try {
 			tInfo = new TorrentInfo(metaBytes);
 		} catch (BencodingException be) {
-			LOGGER.log(Level.WARNING, "Error: bencoding exception encountered", be);
+			LOGGER.log(Level.WARNING, "Bencoding exception encountered", be);
 		}
 
 		RUBTClient client;
@@ -85,15 +85,9 @@ public class RUBTClient extends Thread {
 			// Launches the client as a thread
 			client.start();
 		} catch (IOException ioe) {
-			LOGGER.log(Level.WARNING,"Error: I/O exception encountered",ioe);
+			LOGGER.log(Level.WARNING,"I/O exception encountered",ioe);
 		}
 	}
-
-	/**
-	 * The block size that will be requested, 16K.
-	 */
-	public static final int BLOCK_LENGTH = 2 ^ 14; // = 16Kb
-	// We should be requesting 16K blocks, while pieces are 32 blocks
 
 	private final TorrentInfo tInfo;
 	private final int totalPieces;
@@ -115,15 +109,6 @@ public class RUBTClient extends Thread {
 
 
 	private byte[] bitField;
-	/**
-	 * Indicates how many blocks of the piece are buffered.
-	 */
-	private int[] blockBitField;
-
-	/**
-	 * An array of ByteBuffers to hold pieces assembled from blocks.
-	 */
-	private ByteBuffer[] pieces;
 
 	private int downloaded;
 	private int uploaded;
@@ -201,19 +186,23 @@ public class RUBTClient extends Thread {
 			List<Peer> peers = null;
 			try {
 				peers = this.client.tracker.announce(client.getDownloaded(), client.getUploaded(), client.getLeft(), null);
+				
+				if (peers != null && !peers.isEmpty()) {
+					this.client.addPeers(peers);
+				}
+				
+				this.client.trackerTimer.schedule(this,
+						this.client.tracker.getInterval() * 1000);
+			
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (BencodingException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			}
-
-			if (peers != null && !peers.isEmpty()) {
-				this.client.addPeers(peers);
-			}
-			this.client.trackerTimer.schedule(this,
-					this.client.tracker.getInterval() * 1000);
+			} catch (IllegalStateException ise) {
+				
+			}			
 		}
 	}
 
@@ -252,11 +241,6 @@ public class RUBTClient extends Thread {
 
 		// Set client bit field
 		this.bitField = new byte[bytes];
-		// Set client block bit field
-		this.blockBitField = new int[this.totalPieces];
-
-
-		initializePieces();
 
 		// Send "started" announce and attempt to connect through ports 6881 - 6889
 		List<Peer> peers = null;
@@ -389,8 +373,16 @@ public class RUBTClient extends Thread {
 					// Updated downloaded
 					this.downloaded = this.downloaded + pieceMsg.getBlock().length;
 
-					buildBlocks(pieceMsg);
-
+					// Verify piece
+					if (verifyPiece(pieceMsg.getPieceIndex(), pieceMsg.getBlock())) {
+						LOGGER.log(Level.INFO,"Writing to file: last piece.");
+						// Write piece
+						outFile.seek(pieceMsg.getPieceIndex() * this.pieceLength);
+						outFile.write(pieceMsg.getBlock());
+					} else {
+						// Do nothing and drop piece
+					}
+					
 					if (!peer.amChoked() && peer.amInterested()) {
 						this.chooseAndRequestPiece(peer);
 					}
@@ -422,12 +414,17 @@ public class RUBTClient extends Thread {
 	 */
 	void addPeers(final List<Peer> newPeers) {
 		// Filter by IP address
-		for (Peer newPeer : newPeers) {
-			if ((newPeer.getIp().equals("128.6.171.130") || newPeer.getIp().equals("128.6.171.131")) && !this.peers.contains(newPeer)) {
-				this.peers.add(newPeer);
-				LOGGER.log(Level.INFO,"Connecting to new peer: " + newPeer);
-				newPeer.setTasks(tasks);
-				newPeer.start();
+		
+		if (newPeers == null) {
+			LOGGER.log(Level.WARNING, "No new peers to start.");
+		} else {
+			for (Peer newPeer : newPeers) {
+				if (newPeer != null && (newPeer.getIp().equals("128.6.171.130") || newPeer.getIp().equals("128.6.171.131")) && !this.peers.contains(newPeer)) {
+					this.peers.add(newPeer);
+					LOGGER.log(Level.INFO,"Connecting to new peer: " + newPeer);
+					newPeer.setTasks(tasks);
+					newPeer.start();
+				}
 			}
 		}
 	}
@@ -438,24 +435,20 @@ public class RUBTClient extends Thread {
 	 * @throws IOException
 	 */
 	private void chooseAndRequestPiece(final Peer peer) throws IOException {
-		int pieceIndex;
-		int blockOffset;
-		int blockLength;
-		int pieceLength;
-		int blocksPerPiece;
-
+		
 		// Inspect bit fields and choose piece
 		byte[] peerBitField = peer.getBitField();
 		// Instead of checking pieces from rangeMin=0 to rangeMax=totalPieces, choose a random minimum
 		// rangeMin = pieceIndex
 		// rangeMax = totalPieces
-		pieceIndex = (int)(Math.random() * ((this.totalPieces) + 1));
+		int pieceIndex = (int)(Math.random() * ((this.totalPieces) + 1));
 		for ( ; pieceIndex < this.totalPieces; pieceIndex++) {
 			if (!Utility.isSetBit(this.bitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
 				break;
 			}
 		}
-
+		
+		int pieceLength = 0;
 		// Check if requesting last piece
 		if (pieceIndex == totalPieces - 1) {
 			// Last piece is irregularly-sized
@@ -463,22 +456,9 @@ public class RUBTClient extends Thread {
 		} else {
 			pieceLength = this.pieceLength;
 		}
-
-		blockLength = pieceLength / BLOCK_LENGTH;
-		blocksPerPiece = (int) (Math.ceil((double) pieceLength / (double) blockLength));
-
-		// Check if last block in piece
-		if (this.blockBitField[pieceIndex] == blocksPerPiece - 1) {
-			blockLength = pieceLength % blockLength;
-		}
-
-		// Set offset
-		blockOffset = blockLength * this.blockBitField[pieceIndex];
-
-		// Send request message
-		RequestMessage msg =  new RequestMessage(pieceIndex, blockOffset, blockLength);
-		peer.sendMessage(msg);
-	}	
+		
+		peer.requestPiece(pieceIndex, pieceLength);
+	}
 
 	/**
 	 * Gracefully shuts down the client;
@@ -566,10 +546,14 @@ public class RUBTClient extends Thread {
 	 */
 	public boolean verifyPiece(int pieceIndex, byte[] block)
 			throws IOException, NoSuchAlgorithmException {
+		
+		byte[] piece = new byte[this.pieceLength];
+		System.arraycopy(block, 0, piece, 0, block.length);
+				
 		byte[] hash = null;
 
 		MessageDigest sha = MessageDigest.getInstance("SHA-1");
-		hash = sha.digest(block);
+		hash = sha.digest(piece);
 
 		if (Arrays.equals(this.tInfo.piece_hashes[pieceIndex].array(),
 				hash)) {
@@ -580,59 +564,4 @@ public class RUBTClient extends Thread {
 		return false;
 	}
 
-	private void initializePieces() {
-		this.pieces = new ByteBuffer[totalPieces];
-		for (int pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
-			if (!Utility.isSetBit(this.bitField, pieceIndex)) {
-				this.pieces[pieceIndex] = ByteBuffer.allocate(pieceLength); 
-			}
-		}
-	}
-
-	private void buildBlocks(PieceMessage msg) throws NoSuchAlgorithmException, IOException {
-		int pieceIndex = msg.getPieceIndex();
-		int blockOffset = msg.getBlockOffset();
-		byte[] block = msg.getBlock();
-		int blockLength;
-		int pieceLength;
-		int blocksPerPiece;
-
-		pieces[pieceIndex].put(block, blockOffset, block.length);
-		
-		// Check if requesting last piece
-		if (pieceIndex == this.totalPieces - 1) {
-			// Last piece is irregularly-sized
-			pieceLength = this.fileLength % this.pieceLength;
-		} else {
-			pieceLength = this.pieceLength;
-		}
-
-		blockLength = pieceLength / BLOCK_LENGTH;
-		blocksPerPiece = (int) (Math.ceil((double)pieceLength / (double)blockLength));
-		
-		int pieceOffset = pieceIndex * pieceLength;
-		
-		// Check if last block in piece
-		if (this.blockBitField[pieceIndex] == blocksPerPiece - 1) {
-			if (verifyPiece(pieceIndex, pieces[pieceIndex].array())) {
-				LOGGER.log(Level.INFO,"Writing to file: last piece.");
-				// Write piece
-				outFile.seek(pieceIndex*this.pieceLength);
-				outFile.write(block);
-
-				// Update bit fields and left
-				this.bitField = Utility.setBit(this.bitField, pieceIndex);
-
-				this.left = this.left - pieceLength;
-			} else {
-				// Clear ByteBuffer
-				pieces[pieceIndex].clear();
-
-				// Clear block bit field
-				this.blockBitField[pieceIndex] = 0;
-			}
-		} else {
-			this.blockBitField[pieceIndex]++;
-		}
-	}
 }

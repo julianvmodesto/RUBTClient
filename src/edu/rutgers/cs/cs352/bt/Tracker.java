@@ -216,7 +216,7 @@ public class Tracker {
 			throw new BencodingException("A bencoding exception occurred when decoding tracker response.");
 		}
 
-//		// Catch request failure
+		// Catch request failure
 //		String errorMessage = null;
 //		if (responseMap.containsKey(KEY_FAILURE_REASON)) {
 //			errorMessage = (String) responseMap.get(KEY_FAILURE_REASON);
@@ -226,18 +226,18 @@ public class Tracker {
 //		}
 
 		// Catch warning message
-//		String warningMessage = null;
-//		if (responseMap.containsKey(KEY_WARNING_MESSAGE)) {
-//			warningMessage = (String) responseMap.get(KEY_WARNING_MESSAGE);
-//			LOGGER.log(Level.WARNING,"Warning:");
-//			LOGGER.log(Level.WARNING,warningMessage);
-//		}
+		String warningMessage = null;
+		if (responseMap.containsKey(KEY_WARNING_MESSAGE)) {
+			warningMessage = (String) responseMap.get(KEY_WARNING_MESSAGE);
+			LOGGER.log(Level.WARNING,"Warning:");
+			LOGGER.log(Level.WARNING,warningMessage);
+		}
 
 		// Set the interval
 		if (responseMap.containsKey(KEY_INTERVAL)) {
 			this.interval = (Integer) responseMap.get(KEY_INTERVAL);
 		} else {
-			LOGGER.log(Level.WARNING,"Error: no interval specified in torrent info.");
+			LOGGER.log(Level.WARNING,"No interval specified in torrent info.");
 		}
 
 		// Set min interval
