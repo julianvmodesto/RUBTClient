@@ -4,7 +4,6 @@ package edu.rutgers.cs.cs352.bt;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
 
 /**
  * Represents a Peer Wire Protocol message, specifically those

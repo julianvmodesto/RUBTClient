@@ -11,6 +11,8 @@ import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import edu.rutgers.cs.cs352.bt.util.Utility;
 
@@ -19,6 +21,8 @@ import edu.rutgers.cs.cs352.bt.util.Utility;
  *
  */
 public class Peer extends Thread {
+	
+	private final static Logger LOGGER = Logger.getLogger(Peer.class.getName());
 
 	private static final byte[] BYTES_PROTOCOL = { 'B', 'i', 't', 'T', 'o', 'r', 'r',
 		'e', 'n', 't', ' ', 'p', 'r', 'o', 't', 'o', 'c', 'o', 'l' };
@@ -198,7 +202,7 @@ public class Peer extends Thread {
 		// Update timestamp for keep-alive message timer
 		this.lastMessageTime = System.currentTimeMillis();
 
-		System.out.println("Sent " + msg + " message to the peer.");
+		LOGGER.log(Level.INFO,"Sent " + msg + " message to the peer.");
 	}
 
 	/**
@@ -239,14 +243,14 @@ public class Peer extends Thread {
 
 			// Validate handshake
 			if (!validateHandshake(peerHandshake)) {
-				System.err.println("Error: handshake is incorrect.");
+				LOGGER.log(Level.WARNING,"Handshake is incorrect.");
 				this.disconnect();
 			} else {
 				while (this.keepRunning) {
 					// read message from socket
 					try {
 						Message msg = Message.read(this.in);
-						System.out.println("Queued message: " + msg);
+						LOGGER.log(Level.INFO,"Queued message: " + msg);
 						this.tasks.put(new MessageTask(this,msg));
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
@@ -276,16 +280,14 @@ public class Peer extends Thread {
 		try {
 			socket = new Socket(this.ip, this.port);
 		} catch (UnknownHostException uhe) {
-			System.err.println("Error: the IP address of the host could not be determined from " + this.ip + ".");
-			System.err.println(uhe.getMessage());
+			LOGGER.log(Level.WARNING,"The IP address of the host could not be determined from " + this.ip + ".", uhe);
 		} catch (IOException ioe) {
-			System.err.println("Error: an I/O error occurred.");
-			System.err.println(ioe.getMessage());
+			LOGGER.log(Level.WARNING,"Error: an I/O error occurred.",ioe);
 		}
 
 		// Check if connected once but not closed
 		if (socket == null && !socket.isClosed()) {
-			System.err.println("Error: socket connected once but not closed.");
+			LOGGER.log(Level.WARNING,"Socket connected once but not closed.");
 		}
 
 		// Open IO streams
@@ -308,9 +310,9 @@ public class Peer extends Thread {
 			this.out.flush();
 			this.out.close();
 			
-			System.out.println("Disconnected peer: " + this);
-		} catch (IOException e) {
-			System.err.println("Error: I/O exception encountered when disconnecting peer " + this);
+			LOGGER.log(Level.INFO,"Disconnected peer: " + this);
+		} catch (IOException ioe) {
+			LOGGER.log(Level.WARNING,"I/O exception encountered when disconnecting peer " + this, ioe);
 		}
 	}
 
@@ -423,7 +425,7 @@ public class Peer extends Thread {
 		// Add peer id, which should match the infohash
 		System.arraycopy(this.clientId, 0, handshake, 48, this.clientId.length);	
 
-		System.out.println("Generated handshake for " + this);
+		LOGGER.log(Level.CONFIG,"Generated handshake for " + this);
 
 		return handshake;
 	}
@@ -469,7 +471,7 @@ public class Peer extends Thread {
 			return false;
 		}
 
-		System.out.println("Handshake validated for " + this);
+		LOGGER.log(Level.INFO,"Handshake validated for " + this);
 
 		return true;
 	}

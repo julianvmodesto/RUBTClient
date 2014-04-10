@@ -19,6 +19,8 @@ import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import edu.rutgers.cs.cs352.bt.Message.BitFieldMessage;
 import edu.rutgers.cs.cs352.bt.Message.HaveMessage;
@@ -37,10 +39,13 @@ import edu.rutgers.cs.cs352.bt.util.Utility;
 
 public class RUBTClient extends Thread {
 
+	private final static Logger LOGGER = Logger.getLogger(RUBTClient.class.getName());
+	
 	public static void main(String[] args) {
+		
 		// Check number/type of arguments
 		if (args.length != 2) {
-			System.err.println("Error: two arguments required");
+			LOGGER.log(Level.SEVERE,"Error: two arguments required");
 			System.exit(1);
 		}
 
@@ -53,16 +58,16 @@ public class RUBTClient extends Thread {
 			metaIn.readFully(metaBytes);
 			metaIn.close();
 		} catch (FileNotFoundException fnfe) {
-			System.err.println("Error: file not found exception encountered for file with filename " + args[0]);
+			LOGGER.log(Level.SEVERE, "File not found exception encountered for file with filename \"" + args[0] + "\"", fnfe);
 			System.exit(1);
-		} catch (IOException ie) {
-			System.err.println("Error: I/O exception encountered for file with filename " + args[0]);
+		} catch (IOException ioe) {
+			LOGGER.log(Level.SEVERE, "I/O exception encountered for file with filename \"" + args[0] + "\"", ioe);
 			System.exit(1);
 		}
 
 		// Null check on metaBytes
 		if (metaBytes == null) {
-			System.err.println("Error: corrupt torrent metainfo file");
+			LOGGER.log(Level.SEVERE, "Corrupt torrent metainfo file.");
 			System.exit(1);
 		}
 
@@ -70,8 +75,7 @@ public class RUBTClient extends Thread {
 		try {
 			tInfo = new TorrentInfo(metaBytes);
 		} catch (BencodingException be) {
-			System.err.println("Error: bencoding exception encountered");
-			System.err.println(be.getMessage());
+			LOGGER.log(Level.WARNING, "Error: bencoding exception encountered", be);
 		}
 
 		RUBTClient client;
@@ -81,7 +85,7 @@ public class RUBTClient extends Thread {
 			// Launches the client as a thread
 			client.start();
 		} catch (IOException ioe) {
-			System.err.println("Error: I/O exception encountered");
+			LOGGER.log(Level.WARNING,"Error: I/O exception encountered",ioe);
 		}
 	}
 
@@ -227,9 +231,9 @@ public class RUBTClient extends Thread {
 		this.fileLength = this.tInfo.file_length;
 		this.pieceLength = this.tInfo.piece_length;
 
-		System.out.println("Total pieces: " + this.totalPieces);
-		System.out.println("File length: " + this.fileLength);
-		System.out.println("Piece length: " + this.pieceLength);
+		LOGGER.log(Level.INFO,"Total pieces: " + this.totalPieces);
+		LOGGER.log(Level.INFO,"File length: " + this.fileLength);
+		LOGGER.log(Level.INFO,"Piece length: " + this.pieceLength);
 	}
 
 	@Override
@@ -237,9 +241,8 @@ public class RUBTClient extends Thread {
 
 		try {
 			this.outFile = new RandomAccessFile(this.outFileName, "rw");
-		} catch (FileNotFoundException e) {
-			System.err.println("Unable to open output file for writing!");
-			e.printStackTrace();
+		} catch (FileNotFoundException fnfe) {
+			LOGGER.log(Level.SEVERE,"Unable to open output file for writing!",fnfe);
 			// Exit right now, since nothing else was started yet
 			return;
 		}
@@ -261,19 +264,19 @@ public class RUBTClient extends Thread {
 		boolean trackerFailure = true;
 		for(announcePortIncrement = 0; announcePortIncrement < 9 && trackerFailure == true; announcePortIncrement++) {
 			if(announcePortIncrement != 0){
-				System.out.println("Retrying on a new port.");
+				LOGGER.log(Level.WARNING,"Retrying on a new port");
 			}
 			try {
 				peers = this.tracker.announce(this.getDownloaded(), this.getUploaded(), this.getLeft(), "started");
 				trackerFailure = false;
-				System.out.println("Connected to tracker on port " + this.tracker.getPort());
+				LOGGER.log(Level.INFO,"Connected to tracker on port " + this.tracker.getPort());
 			} catch (IOException ioe) {
 				this.tracker.setPort(this.tracker.getPort() + 1);
-				System.err.println("I/O exception encountered and communication with tracker failed.");
+				LOGGER.log(Level.WARNING, "I/O exception encountered and communication with tracker failed", ioe);
 				trackerFailure = true;
-			} catch (BencodingException e1) {
+			} catch (BencodingException be) {
 				this.tracker.setPort(this.tracker.getPort() + 1);
-				System.err.println("Tracker response invalid.");
+				LOGGER.log(Level.WARNING,"Tracker response invalid.",be);
 				trackerFailure = true;
 			}
 		}
@@ -314,7 +317,7 @@ public class RUBTClient extends Thread {
 				Message msg = task.getMessage();
 				Peer peer = task.getPeer();
 
-				System.out.println("Processing message: " + msg);
+				LOGGER.log(Level.INFO,"Processing message: " + msg);
 
 				switch (msg.getId()) {
 				case Message.ID_KEEP_ALIVE:
@@ -393,7 +396,7 @@ public class RUBTClient extends Thread {
 					}
 					break;
 				default:
-					System.out.println("Could not process message of unknown type: " + msg.getId());
+					LOGGER.log(Level.WARNING,"Could not process message of unknown type: " + msg.getId());
 					break;
 				}					
 			} catch (InterruptedException ie) {
@@ -422,7 +425,7 @@ public class RUBTClient extends Thread {
 		for (Peer newPeer : newPeers) {
 			if ((newPeer.getIp().equals("128.6.171.130") || newPeer.getIp().equals("128.6.171.131")) && !this.peers.contains(newPeer)) {
 				this.peers.add(newPeer);
-				System.out.println("Connecting to new peer: " + newPeer);
+				LOGGER.log(Level.INFO,"Connecting to new peer: " + newPeer);
 				newPeer.setTasks(tasks);
 				newPeer.start();
 			}
@@ -481,7 +484,7 @@ public class RUBTClient extends Thread {
 	 * Gracefully shuts down the client;
 	 */
 	private void shutdown() {
-		System.out.println("Shutting down client.");
+		LOGGER.log(Level.INFO,"Shutting down client.");
 		this.keepRunning = false;
 
 		// Cancel any upcoming tracker announces
@@ -533,7 +536,7 @@ public class RUBTClient extends Thread {
 	 */
 	private boolean amInterested(byte[] peerBitField) {
 		if (this.left == 0) {
-			System.out.println("Nothing left!");
+			LOGGER.log(Level.INFO,"Nothing left!");
 			return false;
 		}
 
@@ -543,7 +546,7 @@ public class RUBTClient extends Thread {
 				return true;
 			}
 		}
-		System.out.println("Not interested!");
+		LOGGER.log(Level.INFO,"Not interested!");
 		return false;
 	}
 
@@ -570,10 +573,10 @@ public class RUBTClient extends Thread {
 
 		if (Arrays.equals(this.tInfo.piece_hashes[pieceIndex].array(),
 				hash)) {
-			System.out.println("Piece verified.");
+			LOGGER.log(Level.INFO,"Piece verified.");
 			return true;
 		}
-		System.out.println("Piece does not match.");
+		LOGGER.log(Level.WARNING,"Piece does not match.");
 		return false;
 	}
 
@@ -612,7 +615,7 @@ public class RUBTClient extends Thread {
 		// Check if last block in piece
 		if (this.blockBitField[pieceIndex] == blocksPerPiece - 1) {
 			if (verifyPiece(pieceIndex, pieces[pieceIndex].array())) {
-				System.out.println("Writing to file: last piece.");
+				LOGGER.log(Level.INFO,"Writing to file: last piece.");
 				// Write piece
 				outFile.seek(pieceIndex*this.pieceLength);
 				outFile.write(block);

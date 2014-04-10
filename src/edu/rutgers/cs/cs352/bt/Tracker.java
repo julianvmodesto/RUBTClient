@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import edu.rutgers.cs.cs352.bt.exceptions.BencodingException;
 import edu.rutgers.cs.cs352.bt.util.Bencoder2;
@@ -24,6 +26,8 @@ import edu.rutgers.cs.cs352.bt.util.Utility;
  * @author Julian Modesto
  */
 public class Tracker {
+	
+	private final static Logger LOGGER = Logger.getLogger(Tracker.class.getName());
 	
 	/**
 	 * Key used to retrieve the request error message.
@@ -187,7 +191,7 @@ public class Tracker {
 		} catch (IOException e) {
 			throw new IOException("An I/O exception occurred when getting the HTTP response code");
 		}
-		System.out.println("Response Code: " + responseCode);
+		LOGGER.log(Level.INFO,"Response Code: " + responseCode);
 
 		// Receive the response
 		// Read each byte from input stream and write to an output stream
@@ -216,8 +220,8 @@ public class Tracker {
 //		String errorMessage = null;
 //		if (responseMap.containsKey(KEY_FAILURE_REASON)) {
 //			errorMessage = (String) responseMap.get(KEY_FAILURE_REASON);
-//			System.err.println("Error: request failed");
-//			System.err.println(errorMessage);
+//			LOGGER.log(Level.SEVERE,"Request failed");
+//			LOGGER.log(Level.SEVERE,errorMessage);
 //			System.exit(1);
 //		}
 
@@ -225,27 +229,26 @@ public class Tracker {
 //		String warningMessage = null;
 //		if (responseMap.containsKey(KEY_WARNING_MESSAGE)) {
 //			warningMessage = (String) responseMap.get(KEY_WARNING_MESSAGE);
-//			System.out.println("Warning:");
-//			System.out.println(warningMessage);
+//			LOGGER.log(Level.WARNING,"Warning:");
+//			LOGGER.log(Level.WARNING,warningMessage);
 //		}
 
 		// Set the interval
 		if (responseMap.containsKey(KEY_INTERVAL)) {
 			this.interval = (Integer) responseMap.get(KEY_INTERVAL);
 		} else {
-			System.err.println("Error: no interval specified in torrent info.");
+			LOGGER.log(Level.WARNING,"Error: no interval specified in torrent info.");
 		}
 
 		// Set min interval
 		if (responseMap.containsKey(KEY_MIN_INTERVAL)) {
 			this.interval = (Integer) responseMap.get(KEY_MIN_INTERVAL);
-			System.out.println("Minimal interval specified in torrent info.");
+			LOGGER.log(Level.CONFIG,"Minimal interval specified in torrent info.");
 		} else {
 			this.interval = this.interval / 2;
-			System.out
-			.println("No minimal interval specified in torrent info.");
+			LOGGER.log(Level.CONFIG,"No minimal interval specified in torrent info.");
 		}
-		System.out.println("Minimal interval for announce = " + this.interval
+		LOGGER.log(Level.INFO,"Minimal interval for announce = " + this.interval
 				+ " seconds");
 		
 		// Decode list of bencodeded dictionaries corresponding to peers
@@ -254,7 +257,7 @@ public class Tracker {
 			encodedPeerList = (ArrayList<HashMap<ByteBuffer, Object>>) responseMap
 					.get(KEY_PEERS);
 		} else {
-			System.out.println("No peer list given by tracker response.");
+			LOGGER.log(Level.WARNING,"No peer list given by tracker response.");
 			return null;
 		}
 
@@ -290,7 +293,7 @@ public class Tracker {
 			Peer peer = new Peer(peerId, peerIP, peerPort, this.infoHash, this.clientId);
 			peerList.add(peer);
 
-			System.out.println("Peer in torrent: " + peer);
+			LOGGER.log(Level.CONFIG,"Peer in torrent: " + peer);
 		}
 		
 		return peerList;
