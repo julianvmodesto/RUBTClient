@@ -40,9 +40,9 @@ import edu.rutgers.cs.cs352.bt.util.Utility;
 public class RUBTClient extends Thread {
 
 	private final static Logger LOGGER = Logger.getLogger(RUBTClient.class.getName());
-	
+
 	public static void main(String[] args) {
-		
+
 		// Check number/type of arguments
 		if (args.length != 2) {
 			LOGGER.log(Level.SEVERE,"Two arguments required");
@@ -84,8 +84,12 @@ public class RUBTClient extends Thread {
 
 			// Launches the client as a thread
 			client.start();
+			client.join();
 		} catch (IOException ioe) {
 			LOGGER.log(Level.WARNING,"I/O exception encountered",ioe);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 
@@ -185,15 +189,15 @@ public class RUBTClient extends Thread {
 		public void run() {
 			List<Peer> peers = null;
 			try {
-				peers = this.client.tracker.announce(client.getDownloaded(), client.getUploaded(), client.getLeft(), null);
-				
+				peers = this.client.tracker.announce(client.getDownloaded(), client.getUploaded(), client.getLeft(), "");
+
 				if (peers != null && !peers.isEmpty()) {
 					this.client.addPeers(peers);
 				}
-				
+
 				this.client.trackerTimer.schedule(this,
 						this.client.tracker.getInterval() * 1000);
-			
+
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -201,7 +205,7 @@ public class RUBTClient extends Thread {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IllegalStateException ise) {
-				
+
 			}			
 		}
 	}
@@ -238,7 +242,7 @@ public class RUBTClient extends Thread {
 
 		//TODO update from output file
 		int bytes = (int) Math.ceil((double)this.totalPieces/8);
-
+		
 		// Set client bit field
 		this.bitField = new byte[bytes];
 
@@ -382,7 +386,7 @@ public class RUBTClient extends Thread {
 					} else {
 						// Do nothing and drop piece
 					}
-					
+
 					if (!peer.amChoked() && peer.amInterested()) {
 						this.chooseAndRequestPiece(peer);
 					}
@@ -414,7 +418,7 @@ public class RUBTClient extends Thread {
 	 */
 	void addPeers(final List<Peer> newPeers) {
 		// Filter by IP address
-		
+
 		if (newPeers == null) {
 			LOGGER.log(Level.WARNING, "No new peers to start.");
 		} else {
@@ -435,19 +439,19 @@ public class RUBTClient extends Thread {
 	 * @throws IOException
 	 */
 	private void chooseAndRequestPiece(final Peer peer) throws IOException {
-		
+
 		// Inspect bit fields and choose piece
 		byte[] peerBitField = peer.getBitField();
-		// Instead of checking pieces from rangeMin=0 to rangeMax=totalPieces, choose a random minimum
+		// Check pieces from rangeMin=0 to rangeMax=totalPieces
 		// rangeMin = pieceIndex
 		// rangeMax = totalPieces
-		int pieceIndex = (int)(Math.random() * ((this.totalPieces) + 1));
+		int pieceIndex = 0;
 		for ( ; pieceIndex < this.totalPieces; pieceIndex++) {
 			if (!Utility.isSetBit(this.bitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
 				break;
 			}
 		}
-		
+
 		int pieceLength = 0;
 		// Check if requesting last piece
 		if (pieceIndex == totalPieces - 1) {
@@ -456,7 +460,7 @@ public class RUBTClient extends Thread {
 		} else {
 			pieceLength = this.pieceLength;
 		}
-		
+
 		peer.requestPiece(pieceIndex, pieceLength);
 	}
 
@@ -470,9 +474,12 @@ public class RUBTClient extends Thread {
 		// Cancel any upcoming tracker announces
 		this.trackerTimer.cancel();
 		// Disconnect all peers
-		for(Peer peer : this.peers){
-			peer.disconnect();
+		if (!this.peers.isEmpty()) {
+			for(Peer peer : this.peers){
+				peer.disconnect();
+			}
 		}
+
 
 		try {
 			this.tracker.announce(this.getDownloaded(), this.getUploaded(), this.getLeft(), "stopped");
@@ -484,6 +491,8 @@ public class RUBTClient extends Thread {
 			e.printStackTrace();
 		}
 		// TODO: make sure all data is written to disk, all threads done
+
+		return;
 	}
 
 
@@ -546,10 +555,10 @@ public class RUBTClient extends Thread {
 	 */
 	public boolean verifyPiece(int pieceIndex, byte[] block)
 			throws IOException, NoSuchAlgorithmException {
-		
+
 		byte[] piece = new byte[this.pieceLength];
 		System.arraycopy(block, 0, piece, 0, block.length);
-				
+
 		byte[] hash = null;
 
 		MessageDigest sha = MessageDigest.getInstance("SHA-1");
