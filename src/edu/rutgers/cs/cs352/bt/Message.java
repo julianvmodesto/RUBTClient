@@ -182,7 +182,7 @@ public class Message {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append(ID_NAMES[id]);
+		builder.append(ID_NAMES[this.id]);
 		builder.append("Message");
 		return builder.toString();
 	}
@@ -215,7 +215,7 @@ public class Message {
 		public String toString() {
 			StringBuilder builder = new StringBuilder();
 			builder.append("HaveMessage [pieceIndex=");
-			builder.append(pieceIndex);
+			builder.append(this.pieceIndex);
 			builder.append("]");
 			return builder.toString();
 		}
@@ -249,9 +249,9 @@ public class Message {
 		public String toString() {
 			StringBuilder builder = new StringBuilder();
 			builder.append("BitFieldMessage [");
-			if (bitField != null) {
+			if (this.bitField != null) {
 				builder.append("bitField=");
-				for (byte b : bitField)
+				for (byte b : this.bitField)
 				{
 					// Add 0x100 then skip char(0) to left-pad bits with zeros
 					builder.append(Integer.toBinaryString(0x100 + b).substring(1));
@@ -313,11 +313,11 @@ public class Message {
 		public String toString() {
 			StringBuilder builder = new StringBuilder();
 			builder.append("RequestMessage [pieceIndex=");
-			builder.append(pieceIndex);
+			builder.append(this.pieceIndex);
 			builder.append(", blockOffset=");
-			builder.append(blockOffset);
+			builder.append(this.blockOffset);
 			builder.append(", blockLength=");
-			builder.append(blockLength);
+			builder.append(this.blockLength);
 			builder.append("]");
 			return builder.toString();
 		}
@@ -374,13 +374,13 @@ public class Message {
 		public String toString() {
 			StringBuilder builder = new StringBuilder();
 			builder.append("PieceMessage [pieceIndex=");
-			builder.append(pieceIndex);
+			builder.append(this.pieceIndex);
 			builder.append(", blockOffset=");
-			builder.append(blockOffset);
+			builder.append(this.blockOffset);
 			builder.append(", ");
-			if (block != null) {
+			if (this.block != null) {
 				builder.append("blockLength=");
-				builder.append(block.length);
+				builder.append(this.block.length);
 			}
 			builder.append("]");
 			return builder.toString();

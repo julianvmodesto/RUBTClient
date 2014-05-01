@@ -36,7 +36,7 @@ public class Peer extends Thread {
 	 * @return the peer ID
 	 */
 	public byte[] getPeerId() {
-		return peerId;
+		return this.peerId;
 	}
 
 	private String ip;
@@ -44,7 +44,7 @@ public class Peer extends Thread {
 	 * @return the peer IP
 	 */
 	public String getIp() {
-		return ip;
+		return this.ip;
 	}
 
 	private int port;
@@ -70,7 +70,7 @@ public class Peer extends Thread {
 	 * @return the bitField
 	 */
 	public synchronized byte[] getBitField() {
-		return bitField;
+		return this.bitField;
 	}
 
 	/**
@@ -226,7 +226,8 @@ public class Peer extends Thread {
 			 * will start now and execute every 10 seconds afterward.
 			 */
 			this.keepAliveTimer.scheduleAtFixedRate(new TimerTask(){
-				public void run(){
+				@Override
+        public void run(){
 					// Let the peer figure out how/when to send a keep-alive
 					try {
 						Peer.this.checkAndSendKeepAlive();
@@ -245,7 +246,7 @@ public class Peer extends Thread {
 
 			// Read response
 			byte[] peerHandshake = new byte[68];
-			in.readFully(peerHandshake);
+			this.in.readFully(peerHandshake);
 
 			// Validate handshake
 			if (!validateHandshake(peerHandshake)) {
@@ -287,9 +288,9 @@ public class Peer extends Thread {
 	 */
 	public void connect() throws IOException {
 		// Create socket
-		socket = null;
+		this.socket = null;
 		try {
-			socket = new Socket(this.ip, this.port);
+			this.socket = new Socket(this.ip, this.port);
 		} catch (UnknownHostException uhe) {
 			LOGGER.log(Level.WARNING,"The IP address of the host could not be determined from " + this.ip + ".", uhe);
 		} catch (IOException ioe) {
@@ -297,13 +298,13 @@ public class Peer extends Thread {
 		}
 
 		// Check if connected once but not closed
-		if (socket == null && !socket.isClosed()) {
+		if (this.socket == null && !this.socket.isClosed()) {
 			LOGGER.log(Level.WARNING,"Socket connected once but not closed.");
 		}
 
 		// Open IO streams
-		this.in = new DataInputStream(socket.getInputStream());
-		this.out = new DataOutputStream(socket.getOutputStream());
+		this.in = new DataInputStream(this.socket.getInputStream());
+		this.out = new DataOutputStream(this.socket.getOutputStream());
 	}
 
 	/**
@@ -351,8 +352,8 @@ public class Peer extends Thread {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + Arrays.hashCode(peerId);
-		result = prime * result + ((ip == null) ? 0 : ip.hashCode());
+		result = prime * result + Arrays.hashCode(this.peerId);
+		result = prime * result + ((this.ip == null) ? 0 : this.ip.hashCode());
 		return result;
 	}
 
@@ -371,14 +372,14 @@ public class Peer extends Thread {
 			return false;
 		}
 		Peer other = (Peer) obj;
-		if (!Arrays.equals(peerId, other.peerId)) {
+		if (!Arrays.equals(this.peerId, other.peerId)) {
 			return false;
 		}
-		if (ip == null) {
+		if (this.ip == null) {
 			if (other.ip != null) {
 				return false;
 			}
-		} else if (!ip.equals(other.ip)) {
+		} else if (!this.ip.equals(other.ip)) {
 			return false;
 		}
 		return true;
@@ -391,18 +392,18 @@ public class Peer extends Thread {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("Peer [");
-		if (peerId != null) {
+		if (this.peerId != null) {
 			builder.append("peerId=");
-			builder.append(Utility.bytesToHexStr(peerId));
+			builder.append(Utility.bytesToHexStr(this.peerId));
 			builder.append(", ");
 		}
-		if (ip != null) {
+		if (this.ip != null) {
 			builder.append("ip=");
-			builder.append(ip);
+			builder.append(this.ip);
 			builder.append(", ");
 		}
 		builder.append("port=");
-		builder.append(port);
+		builder.append(this.port);
 		builder.append("]");
 		return builder.toString();
 	}
@@ -511,9 +512,9 @@ public class Peer extends Thread {
 			} else if (pieceMsg.getBlockOffset() != this.blockOffset) {
 				LOGGER.log(Level.WARNING, "Incorrect block offset received from " + pieceMsg);
 			} else {
-				if (blockOffset + BLOCK_LENGTH >= this.pieceLength) {
+				if (this.blockOffset + BLOCK_LENGTH >= this.pieceLength) {
 					PieceMessage returnMsg = new PieceMessage(this.pieceIndex, 0, this.piece);
-					tasks.put(new MessageTask(this, returnMsg));
+					this.tasks.put(new MessageTask(this, returnMsg));
 				} else {
 					System.arraycopy(pieceMsg.getBlock(), 0, this.piece, this.blockOffset, BLOCK_LENGTH);
 				}

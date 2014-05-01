@@ -3,7 +3,6 @@ package edu.rutgers.cs.cs352.bt;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
@@ -235,14 +234,14 @@ public class Tracker {
 
 		// Set the interval
 		if (responseMap.containsKey(KEY_INTERVAL)) {
-			this.interval = (Integer) responseMap.get(KEY_INTERVAL);
+			this.interval = ((Integer) responseMap.get(KEY_INTERVAL)).intValue();
 		} else {
 			LOGGER.log(Level.WARNING,"No interval specified in torrent info.");
 		}
 
 		// Set min interval
 		if (responseMap.containsKey(KEY_MIN_INTERVAL)) {
-			this.interval = (Integer) responseMap.get(KEY_MIN_INTERVAL);
+			this.interval = ((Integer) responseMap.get(KEY_MIN_INTERVAL)).intValue();
 			LOGGER.log(Level.CONFIG,"Minimal interval specified in torrent info.");
 		} else {
 			this.interval = this.interval / 2;

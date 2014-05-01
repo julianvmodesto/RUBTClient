@@ -96,7 +96,7 @@ public class Utility {
 
 		byte B = arr[index];
 
-		arr[index] = (byte) (B &= ~(1 << bitPosition));
+		arr[index] = (B &= ~(1 << bitPosition));
 		return arr;
 	}
 

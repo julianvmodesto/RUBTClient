@@ -8,7 +8,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -85,8 +84,6 @@ public class RUBTClient extends Thread {
 			// Launches the client as a thread
 			client.start();
 			client.join();
-		} catch (IOException ioe) {
-			LOGGER.log(Level.WARNING,"I/O exception encountered",ioe);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
