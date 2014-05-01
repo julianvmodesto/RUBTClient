@@ -75,7 +75,6 @@ public class Peer extends Thread {
 
 	/**
 	 * @param bit the bit to set
-	 * @return 
 	 */
 	public void setBitField(int bit) {
 		byte[] tempBitField = getBitField();
@@ -101,7 +100,7 @@ public class Peer extends Thread {
 	public Peer(byte[] peerId, String ip, Integer port, byte[] infoHash, byte[] clientId) {
 		this.peerId = peerId;
 		this.ip = ip;
-		this.port = port;
+		this.port = port == null ? -1 : port.intValue();
 		this.infoHash = infoHash;
 		this.clientId = clientId;
 	}

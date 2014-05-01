@@ -210,7 +210,7 @@ public class RUBTClient extends Thread {
 		}
 	}
 
-	public RUBTClient(final TorrentInfo tInfo, final String outFile) throws IOException {
+	public RUBTClient(final TorrentInfo tInfo, final String outFile){
 		this.tInfo = tInfo;
 		this.outFileName = outFile;
 		this.tracker = new Tracker(this.peerId, this.tInfo.info_hash.array(),
