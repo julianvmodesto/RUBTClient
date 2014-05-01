@@ -169,6 +169,9 @@ public class Tracker {
 		} catch (MalformedURLException murle) {
 			throw new MalformedURLException("A mlformed URL exception was encountered.");
 		}
+		
+		LOGGER.info("Announcing: " + request.toString());
+		
 		HttpURLConnection httpConnection;
 		try {
 			httpConnection = (HttpURLConnection) url

@@ -58,7 +58,7 @@ public class Peer extends Thread {
 	/**
 	 * The block size that will be requested, 16K.
 	 */
-	public static final int BLOCK_LENGTH = 2 ^ 14; // = 16Kb
+	public static final int BLOCK_LENGTH = 16384; // = 16Kb
 	// We should be requesting 16K blocks, while pieces are 32 blocks
 	
 	private byte[] piece;
@@ -208,7 +208,7 @@ public class Peer extends Thread {
 		// Update time stamp for keep-alive message timer
 		this.lastMessageTime = System.currentTimeMillis();
 
-		LOGGER.log(Level.INFO,"Sent " + msg + " message to the peer.");
+		LOGGER.log(Level.INFO,"Sent " + msg + " to " + this);
 	}
 
 	/**
@@ -394,7 +394,13 @@ public class Peer extends Thread {
 		builder.append("Peer [");
 		if (this.peerId != null) {
 			builder.append("peerId=");
-			builder.append(Utility.bytesToHexStr(this.peerId));
+			for(int i = 0; i < this.peerId.length; ++i){
+			  if(this.peerId[i] < ' ' || this.peerId[i] > 126){
+			    builder.append(String.format("_%02X",this.peerId[i]));
+			  }else {
+			    builder.append((char)this.peerId[i]);
+			  }
+			}
 			builder.append(", ");
 		}
 		if (this.ip != null) {

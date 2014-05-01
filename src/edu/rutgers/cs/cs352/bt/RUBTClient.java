@@ -8,6 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -210,6 +211,11 @@ public class RUBTClient extends Thread {
 	public RUBTClient(final TorrentInfo tInfo, final String outFile){
 		this.tInfo = tInfo;
 		this.outFileName = outFile;
+		try {
+		LOGGER.info("Starting with peer id \"" + new String(this.peerId,"US-ASCII")+"\"");
+		}catch(UnsupportedEncodingException uee){
+		  // Nope, can't happen
+		}
 		this.tracker = new Tracker(this.peerId, this.tInfo.info_hash.array(),
 				this.tInfo.announce_url.toString(), this.port);
 
@@ -302,7 +308,7 @@ public class RUBTClient extends Thread {
 				Message msg = task.getMessage();
 				Peer peer = task.getPeer();
 
-				LOGGER.log(Level.INFO,"Processing message: " + msg);
+				LOGGER.log(Level.INFO,peer + " sent " + msg);
 
 				switch (msg.getId()) {
 				case Message.ID_KEEP_ALIVE:
