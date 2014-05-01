@@ -467,7 +467,7 @@ public class RUBTClient extends Thread {
 	/**
 	 * Gracefully shuts down the client;
 	 */
-	private void shutdown() {
+	void shutdown() {
 		LOGGER.log(Level.INFO,"Shutting down client.");
 		this.keepRunning = false;
 
