@@ -257,7 +257,7 @@ public class Peer extends Thread {
 					// read message from socket
 					try {
 						Message msg = Message.read(this.in);
-						
+						LOGGER.info("Decoded " + msg);
 						if (msg.getId() == Message.ID_PIECE) {
 							buildPiece(msg);
 						} else {
@@ -523,6 +523,7 @@ public class Peer extends Thread {
 					this.tasks.put(new MessageTask(this, returnMsg));
 				} else {
 					System.arraycopy(pieceMsg.getBlock(), 0, this.piece, this.blockOffset, BLOCK_LENGTH);
+					LOGGER.info("#### Got a piece but did nothing afteward!");
 				}
 			}
 		}
