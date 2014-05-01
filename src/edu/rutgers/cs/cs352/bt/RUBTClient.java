@@ -167,7 +167,7 @@ public class RUBTClient extends Thread {
 	/**
 	 * A timer for scheduling tracker announces.
 	 */
-	private final Timer trackerTimer = new Timer();
+	final Timer trackerTimer = new Timer();
 
 	/**
 	 * Tracker interface.
