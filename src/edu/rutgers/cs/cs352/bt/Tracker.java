@@ -108,7 +108,7 @@ public class Tracker {
 	 * @return the port
 	 */
 	public int getPort() {
-		return port;
+		return this.port;
 	}
 
 	/**

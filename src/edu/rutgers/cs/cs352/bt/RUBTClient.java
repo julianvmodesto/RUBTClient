@@ -118,7 +118,7 @@ public class RUBTClient extends Thread {
 	 * @return the downloaded
 	 */
 	public int getDownloaded() {
-		return downloaded;
+		return this.downloaded;
 	}
 
 	/**
@@ -132,7 +132,7 @@ public class RUBTClient extends Thread {
 	 * @return the uploaded
 	 */
 	public int getUploaded() {
-		return uploaded;
+		return this.uploaded;
 	}
 
 	/**
@@ -146,7 +146,7 @@ public class RUBTClient extends Thread {
 	 * @return the left
 	 */
 	public int getLeft() {
-		return left;
+		return this.left;
 	}
 
 	/**
@@ -186,7 +186,7 @@ public class RUBTClient extends Thread {
 		public void run() {
 			List<Peer> peers = null;
 			try {
-				peers = this.client.tracker.announce(client.getDownloaded(), client.getUploaded(), client.getLeft(), "");
+				peers = this.client.tracker.announce(this.client.getDownloaded(), this.client.getUploaded(), this.client.getLeft(), "");
 
 				if (peers != null && !peers.isEmpty()) {
 					this.client.addPeers(peers);
@@ -378,8 +378,8 @@ public class RUBTClient extends Thread {
 					if (verifyPiece(pieceMsg.getPieceIndex(), pieceMsg.getBlock())) {
 						LOGGER.log(Level.INFO,"Writing to file: last piece.");
 						// Write piece
-						outFile.seek(pieceMsg.getPieceIndex() * this.pieceLength);
-						outFile.write(pieceMsg.getBlock());
+						this.outFile.seek(pieceMsg.getPieceIndex() * this.pieceLength);
+						this.outFile.write(pieceMsg.getBlock());
 					} else {
 						// Do nothing and drop piece
 					}
@@ -423,7 +423,7 @@ public class RUBTClient extends Thread {
 				if (newPeer != null && (newPeer.getIp().equals("128.6.171.130") || newPeer.getIp().equals("128.6.171.131")) && !this.peers.contains(newPeer)) {
 					this.peers.add(newPeer);
 					LOGGER.log(Level.INFO,"Connecting to new peer: " + newPeer);
-					newPeer.setTasks(tasks);
+					newPeer.setTasks(this.tasks);
 					newPeer.start();
 				}
 			}
@@ -451,7 +451,7 @@ public class RUBTClient extends Thread {
 
 		int pieceLength = 0;
 		// Check if requesting last piece
-		if (pieceIndex == totalPieces - 1) {
+		if (pieceIndex == this.totalPieces - 1) {
 			// Last piece is irregularly-sized
 			pieceLength = this.fileLength % this.pieceLength;
 		} else {
@@ -527,7 +527,7 @@ public class RUBTClient extends Thread {
 		}
 
 		// Inspect bit field
-		for (int pieceIndex = 0; pieceIndex < totalPieces; pieceIndex++) {
+		for (int pieceIndex = 0; pieceIndex < this.totalPieces; pieceIndex++) {
 			if (!Utility.isSetBit(this.bitField, pieceIndex) && Utility.isSetBit(peerBitField, pieceIndex)) {
 				return true;
 			}
