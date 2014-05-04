@@ -526,26 +526,30 @@ public class Peer extends Thread {
 			} else if (pieceMsg.getBlockOffset() != this.blockOffset) {
 				LOGGER.warning("Incorrect block offset received from " + pieceMsg);
 			} else {
-				if (blockOffset == this.pieceLength) {
+				if (pieceMsg.getBlock().length == this.lastBlockLength) {
 					// Write the last block of piece
 					System.arraycopy(pieceMsg.getBlock(), 0, this.piece, this.blockOffset, this.lastBlockLength);
 					// Queue the full piece
 					PieceMessage returnMsg = new PieceMessage(this.pieceIndex, 0, this.piece);
 					tasks.put(new MessageTask(this, returnMsg));
-				} else if (blockOffset + BLOCK_LENGTH >= this.pieceLength) {
-					// Write the second-to-last block in the piece
+				} else if (pieceMsg.getBlockOffset() + BLOCK_LENGTH == this.pieceLength) {
+					// Write the last block of piece
 					System.arraycopy(pieceMsg.getBlock(), 0, this.piece, this.blockOffset, BLOCK_LENGTH);
-
-					// Request the last block in the piece
-					this.blockOffset = this.blockOffset + this.lastBlockLength;
-					RequestMessage requestMsg = new RequestMessage(this.pieceIndex, this.blockOffset, this.lastBlockLength);
-					sendMessage(requestMsg);
+					// Queue the full piece
+					PieceMessage returnMsg = new PieceMessage(this.pieceIndex, 0, this.piece);
+					tasks.put(new MessageTask(this, returnMsg));
 				} else {
-					// Request a block in the middle of the piece
 					System.arraycopy(pieceMsg.getBlock(), 0, this.piece, this.blockOffset, BLOCK_LENGTH);
-					this.blockOffset = this.blockOffset + BLOCK_LENGTH;
-					RequestMessage requestMsg = new RequestMessage(this.pieceIndex, this.blockOffset, BLOCK_LENGTH);
-					sendMessage(requestMsg);
+					RequestMessage requestMsg;
+					if (this.blockOffset + BLOCK_LENGTH > this.pieceLength) {
+						// Request the last piece
+						this.blockOffset = this.blockOffset + this.lastBlockLength;
+						requestMsg = new RequestMessage(this.pieceIndex, blockOffset, this.lastBlockLength);
+					} else {
+						this.blockOffset = this.blockOffset + BLOCK_LENGTH;
+						requestMsg = new RequestMessage(this.pieceIndex, blockOffset, BLOCK_LENGTH);
+					}
+					sendMessage(requestMsg);	
 				}
 			}
 		}

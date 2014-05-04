@@ -405,11 +405,15 @@ public class RUBTClient extends Thread {
 					// Verify piece
 					if (verifyPiece(pieceMsg.getPieceIndex(),
 							pieceMsg.getBlock())) {
-						LOGGER.log(Level.INFO, "Writing to file: last piece.");
 						// Write piece
 						this.outFile.seek(pieceMsg.getPieceIndex()
 								* this.pieceLength);
 						this.outFile.write(pieceMsg.getBlock());
+						LOGGER.info("Writing to file piece [pieceIndex=" + pieceMsg.getPieceIndex() + "]");
+						String oldBitFieldStr = this.getBitFieldString();
+						this.setBitField(pieceMsg.getPieceIndex());
+						String newBitFieldStr = this.getBitFieldString();
+						LOGGER.info("Updated my bit field:\n" + oldBitFieldStr + "\n" + newBitFieldStr);
 					} else {
 						// Do nothing and drop piece
 					}
@@ -468,7 +472,7 @@ public class RUBTClient extends Thread {
 			}
 		}
 	}
-
+	private int workingPieceIndex = 0;
 	/**
 	 * Determines which piece to request from the remote peer, and tells the
 	 * peer to "download" it.
@@ -483,7 +487,7 @@ public class RUBTClient extends Thread {
 		// Check pieces from rangeMin=0 to rangeMax=totalPieces
 		// rangeMin = pieceIndex
 		// rangeMax = totalPieces
-		int pieceIndex = 0;
+		int pieceIndex = workingPieceIndex;
 		for (; pieceIndex < this.totalPieces; pieceIndex++) {
 			if (!Utility.isSetBit(this.bitField, pieceIndex)
 					&& Utility.isSetBit(peerBitField, pieceIndex)) {
@@ -501,6 +505,7 @@ public class RUBTClient extends Thread {
 		}
 
 		peer.requestPiece(pieceIndex, requestedPieceLength);
+		workingPieceIndex++;
 	}
 
 	/**
@@ -613,4 +618,42 @@ public class RUBTClient extends Thread {
 		return false;
 	}
 
+
+	/**
+	 * @param bit the bit to set
+	 */
+	private void setBitField(int bit) {
+		byte[] tempBitField = getBitField();
+		tempBitField = Utility.setBit(tempBitField, bit);
+		setBitField(tempBitField);
+	}
+	
+
+	/**
+	 * 
+	 * @param bitField the bitField to set
+	 */
+	private void setBitField(byte[] bitField) {
+		this.bitField = bitField;
+	}
+
+	/**
+	 * @return the bitField
+	 */
+	private byte[] getBitField() {
+		return this.bitField;
+	}
+	
+	private String getBitFieldString() {
+		StringBuilder builder = new StringBuilder();
+		if (this.bitField != null) {
+			builder.append("bitField=");
+			for (byte b : this.bitField)
+			{
+				// Add 0x100 then skip char(0) to left-pad bits with zeros
+				builder.append(Integer.toBinaryString(0x100 + b).substring(1));
+			}
+		}
+		return builder.toString();
+	}
 }
