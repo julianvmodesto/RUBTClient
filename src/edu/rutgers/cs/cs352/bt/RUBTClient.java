@@ -382,7 +382,7 @@ public class RUBTClient extends Thread {
 					if (peer.getBitField() == null) {
 						peer.initializeBitField(this.totalPieces);
 					}
-					peer.setBitField(haveMsg.getPieceIndex());
+					peer.setBitFieldBit(haveMsg.getPieceIndex());
 
 					peer.setLocalInterested(amInterested(peer.getBitField()));
 					if (!peer.amChoked() && peer.amInterested()) {
@@ -406,17 +406,19 @@ public class RUBTClient extends Thread {
 					if (verifyPiece(pieceMsg.getPieceIndex(),
 							pieceMsg.getBlock())) {
 						// Write piece
+						LOGGER.info("Writing piece [pieceIndex=" + pieceMsg.getPieceIndex() + "] to file");
+
 						this.outFile.seek(pieceMsg.getPieceIndex()
 								* this.pieceLength);
 						this.outFile.write(pieceMsg.getBlock());
-						LOGGER.info("Writing to file piece [pieceIndex=" + pieceMsg.getPieceIndex() + "]");
-						String oldBitFieldStr = this.getBitFieldString();
-						this.setBitField(pieceMsg.getPieceIndex());
-						String newBitFieldStr = this.getBitFieldString();
-						LOGGER.info("Updated my bit field:\n" + oldBitFieldStr + "\n" + newBitFieldStr);
+						this.setBitFieldBit(pieceMsg.getPieceIndex());
 					} else {
-						// Do nothing and drop piece
+						// Drop piece
+						LOGGER.warning("Dropping piece [pieceIndex=" + pieceMsg.getPieceIndex() + "]");
+						this.resetBitFieldBit(pieceMsg.getPieceIndex());
 					}
+					LOGGER.info("Updated my bit field: " + this.getBitFieldString());
+
 
 					if (!peer.amChoked() && peer.amInterested()) {
 						this.chooseAndRequestPiece(peer);
@@ -472,7 +474,6 @@ public class RUBTClient extends Thread {
 			}
 		}
 	}
-	private int workingPieceIndex = 0;
 	/**
 	 * Determines which piece to request from the remote peer, and tells the
 	 * peer to "download" it.
@@ -487,13 +488,14 @@ public class RUBTClient extends Thread {
 		// Check pieces from rangeMin=0 to rangeMax=totalPieces
 		// rangeMin = pieceIndex
 		// rangeMax = totalPieces
-		int pieceIndex = workingPieceIndex;
-		for (; pieceIndex < this.totalPieces; pieceIndex++) {
+		int pieceIndex;
+		for (pieceIndex = 0; pieceIndex < this.totalPieces; pieceIndex++) {
 			if (!Utility.isSetBit(this.bitField, pieceIndex)
 					&& Utility.isSetBit(peerBitField, pieceIndex)) {
 				break;
 			}
 		}
+		this.setBitFieldBit(pieceIndex);
 
 		int requestedPieceLength = 0;
 		// Check if requesting last piece
@@ -505,7 +507,6 @@ public class RUBTClient extends Thread {
 		}
 
 		peer.requestPiece(pieceIndex, requestedPieceLength);
-		workingPieceIndex++;
 	}
 
 	/**
@@ -622,12 +623,20 @@ public class RUBTClient extends Thread {
 	/**
 	 * @param bit the bit to set
 	 */
-	private void setBitField(int bit) {
+	private void setBitFieldBit(int bit) {
 		byte[] tempBitField = getBitField();
 		tempBitField = Utility.setBit(tempBitField, bit);
 		setBitField(tempBitField);
 	}
 	
+	/**
+	 * @param bit the bit to reset
+	 */
+	private void resetBitFieldBit(int bit) {
+		byte[] tempBitField = getBitField();
+		tempBitField = Utility.resetBit(tempBitField, bit);
+		setBitField(tempBitField);
+	}
 
 	/**
 	 * 

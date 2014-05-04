@@ -77,7 +77,7 @@ public class Peer extends Thread {
 	/**
 	 * @param bit the bit to set
 	 */
-	public void setBitField(int bit) {
+	public void setBitFieldBit(int bit) {
 		byte[] tempBitField = getBitField();
 		tempBitField = Utility.setBit(tempBitField, bit);
 		setBitField(tempBitField);

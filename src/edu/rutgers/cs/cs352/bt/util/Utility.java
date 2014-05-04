@@ -102,7 +102,7 @@ public class Utility {
 
 	public static boolean isSetBit(byte[] data, int pos) {
 		int posByte = pos/8; 
-		int posBit = pos%8;
+		int posBit = 7 - pos%8;
 		byte valByte = data[posByte];
 		int valInt = valByte>>(8-(posBit+1)) & 0x0001;
 		return valInt == 1;
