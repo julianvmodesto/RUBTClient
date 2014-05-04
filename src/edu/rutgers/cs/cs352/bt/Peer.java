@@ -510,9 +510,9 @@ public class Peer extends Thread {
 		RequestMessage requestMsg;
 		if (this.blockOffset + this.lastBlockLength >= this.pieceLength) {
 			// Request the last piece
-			requestMsg = new RequestMessage(this.pieceIndex, blockOffset, this.lastBlockLength);
+			requestMsg = new RequestMessage(this.pieceIndex, this.blockOffset, this.lastBlockLength);
 		} else {
-			requestMsg = new RequestMessage(this.pieceIndex, blockOffset, BLOCK_LENGTH);
+			requestMsg = new RequestMessage(this.pieceIndex, this.blockOffset, BLOCK_LENGTH);
 		}
 		sendMessage(requestMsg);
 	}
