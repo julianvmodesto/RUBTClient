@@ -65,6 +65,7 @@ public class Peer extends Thread {
 	private int pieceLength;
 	private int pieceIndex;
 	private int blockOffset;
+	private int lastBlockLength;
 
 	/**
 	 * @return the bitField
@@ -208,7 +209,7 @@ public class Peer extends Thread {
 		// Update time stamp for keep-alive message timer
 		this.lastMessageTime = System.currentTimeMillis();
 
-		LOGGER.log(Level.INFO,"Sent " + msg + " to " + this);
+		LOGGER.info("Sent " + msg + " to " + this);
 	}
 
 	/**
@@ -261,7 +262,7 @@ public class Peer extends Thread {
 						if (msg.getId() == Message.ID_PIECE) {
 							buildPiece(msg);
 						} else {
-							LOGGER.log(Level.INFO,"Queued message: " + msg);
+							LOGGER.info("Queued message: " + msg);
 							this.tasks.put(new MessageTask(this,msg));
 						}
 					} catch (IOException ioe) {
@@ -322,7 +323,7 @@ public class Peer extends Thread {
 			this.out.flush();
 			this.out.close();
 			
-			LOGGER.log(Level.INFO,"Disconnected peer: " + this);
+			LOGGER.info("Disconnected peer: " + this);
 		} catch (IOException ioe) {
 			LOGGER.log(Level.WARNING,"I/O exception encountered when disconnecting peer " + this, ioe);
 		}
@@ -489,7 +490,7 @@ public class Peer extends Thread {
 			return false;
 		}
 
-		LOGGER.log(Level.INFO,"Handshake validated for " + this);
+		LOGGER.info("Handshake validated for " + this);
 
 		return true;
 	}
@@ -502,28 +503,49 @@ public class Peer extends Thread {
 		this.pieceIndex = pieceIndex;
 		this.pieceLength = pieceLength;
 		this.piece = new byte[pieceLength];
+		this.lastBlockLength = this.pieceLength % BLOCK_LENGTH;
 		
 		this.blockOffset = 0;
 		
-		RequestMessage msg = new RequestMessage(this.pieceIndex, this.blockOffset, BLOCK_LENGTH);
-		sendMessage(msg);
+		RequestMessage requestMsg;
+		if (this.blockOffset + this.lastBlockLength >= this.pieceLength) {
+			// Request the last piece
+			requestMsg = new RequestMessage(this.pieceIndex, blockOffset, this.lastBlockLength);
+		} else {
+			requestMsg = new RequestMessage(this.pieceIndex, blockOffset, BLOCK_LENGTH);
+		}
+		sendMessage(requestMsg);
 	}
 
-
-	private void buildPiece(Message msg) throws InterruptedException {
+	
+	private void buildPiece(Message msg) throws InterruptedException, IOException {
 		if (msg.getId() == Message.ID_PIECE) {
 			PieceMessage pieceMsg = (PieceMessage) msg;
 			if (pieceMsg.getPieceIndex() != this.pieceIndex) {
-				LOGGER.log(Level.WARNING, "Incorrect piece received from " + pieceMsg);
+				LOGGER.warning("Incorrect piece received from " + pieceMsg);
 			} else if (pieceMsg.getBlockOffset() != this.blockOffset) {
-				LOGGER.log(Level.WARNING, "Incorrect block offset received from " + pieceMsg);
+				LOGGER.warning("Incorrect block offset received from " + pieceMsg);
 			} else {
-				if (this.blockOffset + BLOCK_LENGTH >= this.pieceLength) {
+				if (blockOffset == this.pieceLength) {
+					// Write the last block of piece
+					System.arraycopy(pieceMsg.getBlock(), 0, this.piece, this.blockOffset, this.lastBlockLength);
+					// Queue the full piece
 					PieceMessage returnMsg = new PieceMessage(this.pieceIndex, 0, this.piece);
-					this.tasks.put(new MessageTask(this, returnMsg));
-				} else {
+					tasks.put(new MessageTask(this, returnMsg));
+				} else if (blockOffset + BLOCK_LENGTH >= this.pieceLength) {
+					// Write the second-to-last block in the piece
 					System.arraycopy(pieceMsg.getBlock(), 0, this.piece, this.blockOffset, BLOCK_LENGTH);
-					LOGGER.info("#### Got a piece but did nothing afteward!");
+
+					// Request the last block in the piece
+					this.blockOffset = this.blockOffset + this.lastBlockLength;
+					RequestMessage requestMsg = new RequestMessage(this.pieceIndex, this.blockOffset, this.lastBlockLength);
+					sendMessage(requestMsg);
+				} else {
+					// Request a block in the middle of the piece
+					System.arraycopy(pieceMsg.getBlock(), 0, this.piece, this.blockOffset, BLOCK_LENGTH);
+					this.blockOffset = this.blockOffset + BLOCK_LENGTH;
+					RequestMessage requestMsg = new RequestMessage(this.pieceIndex, this.blockOffset, BLOCK_LENGTH);
+					sendMessage(requestMsg);
 				}
 			}
 		}
