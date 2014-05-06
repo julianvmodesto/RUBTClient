@@ -154,6 +154,8 @@ public class Message {
 			block = new byte[length - 9];
 			din.readFully(block);
 			return new PieceMessage(pieceIndex, blockOffset, block);
+		default:
+			break;
 		}
 
 		return null;
