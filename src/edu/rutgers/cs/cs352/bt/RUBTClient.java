@@ -25,7 +25,6 @@ import java.util.logging.Logger;
 import edu.rutgers.cs.cs352.bt.Message.BitFieldMessage;
 import edu.rutgers.cs.cs352.bt.Message.HaveMessage;
 import edu.rutgers.cs.cs352.bt.Message.PieceMessage;
-import edu.rutgers.cs.cs352.bt.Message.RequestMessage;
 import edu.rutgers.cs.cs352.bt.exceptions.BencodingException;
 import edu.rutgers.cs.cs352.bt.util.Utility;
 
@@ -41,29 +40,29 @@ public class RUBTClient extends Thread {
 	private final static Logger LOGGER = Logger.getLogger(RUBTClient.class
 			.getName());
 
-	public static void main(String[] args) {
+	public static void main(final String[] args) {
 
 		// Check number/type of arguments
 		if (args.length != 2) {
-			LOGGER.log(Level.SEVERE, "Two arguments required");
+			RUBTClient.LOGGER.log(Level.SEVERE, "Two arguments required");
 			System.exit(1);
 		}
 
 		byte[] metaBytes = null;
 		try {
-			File metaFile = new File(args[0]);
-			DataInputStream metaIn = new DataInputStream(new FileInputStream(
-					metaFile));
+			final File metaFile = new File(args[0]);
+			final DataInputStream metaIn = new DataInputStream(
+					new FileInputStream(metaFile));
 			metaBytes = new byte[(int) metaFile.length()];
 			metaIn.readFully(metaBytes);
 			metaIn.close();
-		} catch (FileNotFoundException fnfe) {
-			LOGGER.log(Level.SEVERE,
+		} catch (final FileNotFoundException fnfe) {
+			RUBTClient.LOGGER.log(Level.SEVERE,
 					"File not found exception encountered for file with filename \""
 							+ args[0] + "\"", fnfe);
 			System.exit(1);
-		} catch (IOException ioe) {
-			LOGGER.log(Level.SEVERE,
+		} catch (final IOException ioe) {
+			RUBTClient.LOGGER.log(Level.SEVERE,
 					"I/O exception encountered for file with filename \""
 							+ args[0] + "\"", ioe);
 			System.exit(1);
@@ -71,15 +70,17 @@ public class RUBTClient extends Thread {
 
 		// Null check on metaBytes
 		if (metaBytes == null) {
-			LOGGER.log(Level.SEVERE, "Corrupt torrent metainfo file.");
+			RUBTClient.LOGGER.log(Level.SEVERE,
+					"Corrupt torrent metainfo file.");
 			System.exit(1);
 		}
 
 		TorrentInfo tInfo = null;
 		try {
 			tInfo = new TorrentInfo(metaBytes);
-		} catch (BencodingException be) {
-			LOGGER.log(Level.WARNING, "Bencoding exception encountered", be);
+		} catch (final BencodingException be) {
+			RUBTClient.LOGGER.log(Level.WARNING,
+					"Bencoding exception encountered", be);
 		}
 
 		RUBTClient client;
@@ -89,7 +90,7 @@ public class RUBTClient extends Thread {
 			// Launches the client as a thread
 			client.start();
 			client.join();
-		} catch (InterruptedException e) {
+		} catch (final InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -104,14 +105,14 @@ public class RUBTClient extends Thread {
 	private final LinkedBlockingQueue<MessageTask> tasks = new LinkedBlockingQueue<MessageTask>();
 
 	// Generate a random peer ID value
-	private final byte[] peerId = generateMyPeerId();
+	private final byte[] peerId = RUBTClient.generateMyPeerId();
 
 	/**
 	 * Hard code the first 4 bytes of our client's peer ID.
 	 */
 	private static final byte[] BYTES_GROUP = { 'G', 'P', '1', '6' };
 
-	private int port = 6881;
+	private final int port = 6881;
 
 	private byte[] bitField;
 
@@ -130,7 +131,7 @@ public class RUBTClient extends Thread {
 	 * @param downloaded
 	 *            the downloaded to set
 	 */
-	public void setDownloaded(int downloaded) {
+	public void setDownloaded(final int downloaded) {
 		this.downloaded = downloaded;
 	}
 
@@ -145,7 +146,7 @@ public class RUBTClient extends Thread {
 	 * @param uploaded
 	 *            the uploaded to set
 	 */
-	public void setUploaded(int uploaded) {
+	public void setUploaded(final int uploaded) {
 		this.uploaded = uploaded;
 	}
 
@@ -160,7 +161,7 @@ public class RUBTClient extends Thread {
 	 * @param left
 	 *            the left to set
 	 */
-	public synchronized void setLeft(int left) {
+	public synchronized void setLeft(final int left) {
 		this.left = left;
 	}
 
@@ -199,20 +200,20 @@ public class RUBTClient extends Thread {
 						this.client.getDownloaded(), this.client.getUploaded(),
 						this.client.getLeft(), "");
 
-				if (peers != null && !peers.isEmpty()) {
+				if ((peers != null) && !peers.isEmpty()) {
 					this.client.addPeers(peers);
 				}
 
 				this.client.trackerTimer.schedule(this,
 						this.client.tracker.getInterval() * 1000);
 
-			} catch (IOException e) {
+			} catch (final IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			} catch (BencodingException e) {
+			} catch (final BencodingException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			} catch (IllegalStateException ise) {
+			} catch (final IllegalStateException ise) {
 
 			}
 		}
@@ -222,9 +223,9 @@ public class RUBTClient extends Thread {
 		this.tInfo = tInfo;
 		this.outFileName = outFile;
 		try {
-			LOGGER.info("Starting with peer id \""
+			RUBTClient.LOGGER.info("Starting with peer id \""
 					+ new String(this.peerId, "US-ASCII") + "\"");
-		} catch (UnsupportedEncodingException uee) {
+		} catch (final UnsupportedEncodingException uee) {
 			// Nope, can't happen
 		}
 		this.tracker = new Tracker(this.peerId, this.tInfo.info_hash.array(),
@@ -238,9 +239,9 @@ public class RUBTClient extends Thread {
 		this.fileLength = this.tInfo.file_length;
 		this.pieceLength = this.tInfo.piece_length;
 
-		LOGGER.log(Level.INFO, "Total pieces: " + this.totalPieces);
-		LOGGER.log(Level.INFO, "File length: " + this.fileLength);
-		LOGGER.log(Level.INFO, "Piece length: " + this.pieceLength);
+		RUBTClient.LOGGER.log(Level.INFO, "Total pieces: " + this.totalPieces);
+		RUBTClient.LOGGER.log(Level.INFO, "File length: " + this.fileLength);
+		RUBTClient.LOGGER.log(Level.INFO, "Piece length: " + this.pieceLength);
 	}
 
 	@Override
@@ -248,15 +249,15 @@ public class RUBTClient extends Thread {
 
 		try {
 			this.outFile = new RandomAccessFile(this.outFileName, "rw");
-		} catch (FileNotFoundException fnfe) {
-			LOGGER.log(Level.SEVERE, "Unable to open output file for writing!",
-					fnfe);
+		} catch (final FileNotFoundException fnfe) {
+			RUBTClient.LOGGER.log(Level.SEVERE,
+					"Unable to open output file for writing!", fnfe);
 			// Exit right now, since nothing else was started yet
 			return;
 		}
 
 		// TODO update from output file
-		int bytes = (int) Math.ceil((double) this.totalPieces / 8);
+		final int bytes = (int) Math.ceil((double) this.totalPieces / 8);
 
 		// Set client bit field
 		this.bitField = new byte[bytes];
@@ -266,27 +267,30 @@ public class RUBTClient extends Thread {
 		List<Peer> peers = null;
 		int announcePortIncrement;
 		boolean trackerFailure = true;
-		for (announcePortIncrement = 0; announcePortIncrement < 9
-				&& trackerFailure == true; announcePortIncrement++) {
+		for (announcePortIncrement = 0; (announcePortIncrement < 9)
+				&& (trackerFailure == true); announcePortIncrement++) {
 			if (announcePortIncrement != 0) {
-				LOGGER.log(Level.WARNING, "Retrying on a new port");
+				RUBTClient.LOGGER.log(Level.WARNING, "Retrying on a new port");
 			}
 			try {
 				peers = this.tracker.announce(this.getDownloaded(),
 						this.getUploaded(), this.getLeft(), "started");
 				trackerFailure = false;
-				LOGGER.log(Level.INFO, "Connected to tracker on port "
-						+ this.tracker.getPort());
-			} catch (IOException ioe) {
+				RUBTClient.LOGGER.log(
+						Level.INFO,
+						"Connected to tracker on port "
+								+ this.tracker.getPort());
+			} catch (final IOException ioe) {
 				this.tracker.setPort(this.tracker.getPort() + 1);
-				LOGGER.log(
-						Level.WARNING,
-						"I/O exception encountered and communication with tracker failed",
-						ioe);
+				RUBTClient.LOGGER
+						.log(Level.WARNING,
+								"I/O exception encountered and communication with tracker failed",
+								ioe);
 				trackerFailure = true;
-			} catch (BencodingException be) {
+			} catch (final BencodingException be) {
 				this.tracker.setPort(this.tracker.getPort() + 1);
-				LOGGER.log(Level.WARNING, "Tracker response invalid.", be);
+				RUBTClient.LOGGER.log(Level.WARNING,
+						"Tracker response invalid.", be);
 				trackerFailure = true;
 			}
 		}
@@ -296,13 +300,13 @@ public class RUBTClient extends Thread {
 			// Schedule the first "regular" announce - the rest are schedule by
 			// the
 			// task itself
-			int interval = this.tracker.getInterval();
+			final int interval = this.tracker.getInterval();
 			this.trackerTimer.schedule(new TrackerAnnounceTask(this),
 					interval * 1000);
 		}
 
 		// Start new thread to listen for "quit" from user
-		Thread userInput = new Thread() {
+		final Thread userInput = new Thread() {
 			@Override
 			public void run() {
 				final BufferedReader br = new BufferedReader(
@@ -312,8 +316,8 @@ public class RUBTClient extends Thread {
 					line = br.readLine();
 					while (!line.equals("quit")) {
 					}
-					shutdown();
-				} catch (IOException ioe) {
+					RUBTClient.this.shutdown();
+				} catch (final IOException ioe) {
 					// TODO Auto-generated catch block
 					ioe.printStackTrace();
 				}
@@ -324,12 +328,12 @@ public class RUBTClient extends Thread {
 		// Main loop:
 		while (this.keepRunning) {
 			try {
-				MessageTask task = this.tasks.take();
+				final MessageTask task = this.tasks.take();
 				// Process the task
-				Message msg = task.getMessage();
-				Peer peer = task.getPeer();
+				final Message msg = task.getMessage();
+				final Peer peer = task.getPeer();
 
-				LOGGER.log(Level.INFO, peer + " sent " + msg);
+				RUBTClient.LOGGER.log(Level.INFO, peer + " sent " + msg);
 
 				switch (msg.getId()) {
 				case Message.ID_KEEP_ALIVE:
@@ -365,11 +369,12 @@ public class RUBTClient extends Thread {
 					break;
 				case Message.ID_BIT_FIELD:
 					// Set peer bit field
-					BitFieldMessage bitFieldMsg = (BitFieldMessage) msg;
+					final BitFieldMessage bitFieldMsg = (BitFieldMessage) msg;
 					peer.setBitField(bitFieldMsg.getBitField());
 
 					// Inspect bit field
-					peer.setLocalInterested(amInterested(peer.getBitField()));
+					peer.setLocalInterested(this.amInterested(peer
+							.getBitField()));
 					if (!peer.amChoked() && peer.amInterested()) {
 						peer.sendMessage(Message.INTERESTED);
 					} else if (peer.amInterested()) {
@@ -377,36 +382,36 @@ public class RUBTClient extends Thread {
 					}
 					break;
 				case Message.ID_HAVE:
-					HaveMessage haveMsg = (HaveMessage) msg;
+					final HaveMessage haveMsg = (HaveMessage) msg;
 
 					if (peer.getBitField() == null) {
 						peer.initializeBitField(this.totalPieces);
 					}
 					peer.setBitFieldBit(haveMsg.getPieceIndex());
 
-					peer.setLocalInterested(amInterested(peer.getBitField()));
+					peer.setLocalInterested(this.amInterested(peer
+							.getBitField()));
 					if (!peer.amChoked() && peer.amInterested()) {
 						peer.sendMessage(Message.INTERESTED);
 						peer.setLocalInterested(true);
 					}
 					break;
 				case Message.ID_REQUEST:
-					RequestMessage requestMsg = (RequestMessage) msg;
-
 					// TODO process request
 					break;
 				case Message.ID_PIECE:
-					PieceMessage pieceMsg = (PieceMessage) msg;
+					final PieceMessage pieceMsg = (PieceMessage) msg;
 
 					// Updated downloaded
 					this.downloaded = this.downloaded
 							+ pieceMsg.getBlock().length;
 
 					// Verify piece
-					if (verifyPiece(pieceMsg.getPieceIndex(),
+					if (this.verifyPiece(pieceMsg.getPieceIndex(),
 							pieceMsg.getBlock())) {
 						// Write piece
-						LOGGER.info("Writing piece [pieceIndex=" + pieceMsg.getPieceIndex() + "] to file");
+						RUBTClient.LOGGER.info("Writing piece [pieceIndex="
+								+ pieceMsg.getPieceIndex() + "] to file");
 
 						this.outFile.seek(pieceMsg.getPieceIndex()
 								* this.pieceLength);
@@ -414,34 +419,35 @@ public class RUBTClient extends Thread {
 						this.setBitFieldBit(pieceMsg.getPieceIndex());
 					} else {
 						// Drop piece
-						LOGGER.warning("Dropping piece [pieceIndex=" + pieceMsg.getPieceIndex() + "]");
+						RUBTClient.LOGGER.warning("Dropping piece [pieceIndex="
+								+ pieceMsg.getPieceIndex() + "]");
 						this.resetBitFieldBit(pieceMsg.getPieceIndex());
 					}
-					LOGGER.info("Updated my bit field: " + this.getBitFieldString());
-
+					RUBTClient.LOGGER.info("Updated my bit field: "
+							+ this.getBitFieldString());
 
 					if (!peer.amChoked() && peer.amInterested()) {
 						this.chooseAndRequestPiece(peer);
 					}
 					break;
 				default:
-					LOGGER.log(
+					RUBTClient.LOGGER.log(
 							Level.WARNING,
 							"Could not process message of unknown type: "
 									+ msg.getId());
 					break;
 				}
-			} catch (InterruptedException ie) {
+			} catch (final InterruptedException ie) {
 				// This can happen either "randomly" or due to a shutdown - just
 				// continue the loop.
 				continue;
-			} catch (IOException e) {
+			} catch (final IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			} catch (NullPointerException npe) {
+			} catch (final NullPointerException npe) {
 				// TODO Auto-generated catch block
 				npe.printStackTrace();
-			} catch (NoSuchAlgorithmException e) {
+			} catch (final NoSuchAlgorithmException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -459,21 +465,23 @@ public class RUBTClient extends Thread {
 		// Filter by IP address
 
 		if (newPeers == null) {
-			LOGGER.log(Level.WARNING, "No new peers to start.");
+			RUBTClient.LOGGER.log(Level.WARNING, "No new peers to start.");
 		} else {
-			for (Peer newPeer : newPeers) {
-				if (newPeer != null
+			for (final Peer newPeer : newPeers) {
+				if ((newPeer != null)
 						&& (newPeer.getIp().equals("128.6.171.130") || newPeer
 								.getIp().equals("128.6.171.131"))
 						&& !this.peers.contains(newPeer)) {
 					this.peers.add(newPeer);
-					LOGGER.log(Level.INFO, "Connecting to new peer: " + newPeer);
+					RUBTClient.LOGGER.log(Level.INFO,
+							"Connecting to new peer: " + newPeer);
 					newPeer.setTasks(this.tasks);
 					newPeer.start();
 				}
 			}
 		}
 	}
+
 	/**
 	 * Determines which piece to request from the remote peer, and tells the
 	 * peer to "download" it.
@@ -484,12 +492,12 @@ public class RUBTClient extends Thread {
 	private void chooseAndRequestPiece(final Peer peer) throws IOException {
 
 		// Inspect bit fields and choose piece
-		byte[] peerBitField = peer.getBitField();
+		final byte[] peerBitField = peer.getBitField();
 		// Check pieces from rangeMin=0 to rangeMax=totalPieces
 		// rangeMin = pieceIndex
 		// rangeMax = totalPieces
 		int pieceIndex;
-		for (pieceIndex = 0; pieceIndex < this.totalPieces; pieceIndex++) {
+		for (pieceIndex = 0; pieceIndex < (this.totalPieces - 1); pieceIndex++) {
 			if (!Utility.isSetBit(this.bitField, pieceIndex)
 					&& Utility.isSetBit(peerBitField, pieceIndex)) {
 				break;
@@ -499,7 +507,7 @@ public class RUBTClient extends Thread {
 
 		int requestedPieceLength = 0;
 		// Check if requesting last piece
-		if (pieceIndex == this.totalPieces - 1) {
+		if (pieceIndex == (this.totalPieces - 2)) {
 			// Last piece is irregularly-sized
 			requestedPieceLength = this.fileLength % this.pieceLength;
 		} else {
@@ -513,14 +521,14 @@ public class RUBTClient extends Thread {
 	 * Gracefully shuts down the client;
 	 */
 	void shutdown() {
-		LOGGER.log(Level.INFO, "Shutting down client.");
+		RUBTClient.LOGGER.log(Level.INFO, "Shutting down client.");
 		this.keepRunning = false;
 
 		// Cancel any upcoming tracker announces
 		this.trackerTimer.cancel();
 		// Disconnect all peers
 		if (!this.peers.isEmpty()) {
-			for (Peer peer : this.peers) {
+			for (final Peer peer : this.peers) {
 				peer.disconnect();
 			}
 		}
@@ -528,10 +536,10 @@ public class RUBTClient extends Thread {
 		try {
 			this.tracker.announce(this.getDownloaded(), this.getUploaded(),
 					this.getLeft(), "stopped");
-		} catch (IOException e) {
+		} catch (final IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (BencodingException e) {
+		} catch (final BencodingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -548,13 +556,14 @@ public class RUBTClient extends Thread {
 	 * @return the generated ID
 	 */
 	private static byte[] generateMyPeerId() {
-		byte[] peerId = new byte[20];
+		final byte[] peerId = new byte[20];
 
 		// Hard code the first four bytes for easy identification
-		System.arraycopy(BYTES_GROUP, 0, peerId, 0, BYTES_GROUP.length);
+		System.arraycopy(RUBTClient.BYTES_GROUP, 0, peerId, 0,
+				RUBTClient.BYTES_GROUP.length);
 
 		// Randomly generate remaining 16 bytes
-		byte[] random = new byte[16];
+		final byte[] random = new byte[16];
 		new Random().nextBytes(random);
 
 		System.arraycopy(random, 0, peerId, 4, random.length);
@@ -569,9 +578,9 @@ public class RUBTClient extends Thread {
 	 * @param peerBitField
 	 * @return
 	 */
-	private boolean amInterested(byte[] peerBitField) {
+	private boolean amInterested(final byte[] peerBitField) {
 		if (this.left == 0) {
-			LOGGER.log(Level.INFO, "Nothing left!");
+			RUBTClient.LOGGER.log(Level.INFO, "Nothing left!");
 			return false;
 		}
 
@@ -582,7 +591,7 @@ public class RUBTClient extends Thread {
 				return true;
 			}
 		}
-		LOGGER.log(Level.INFO, "Not interested!");
+		RUBTClient.LOGGER.log(Level.INFO, "Not interested!");
 		return false;
 	}
 
@@ -600,49 +609,51 @@ public class RUBTClient extends Thread {
 	 * @throws NoSuchAlgorithmException
 	 * 
 	 */
-	public boolean verifyPiece(int pieceIndex, byte[] block)
+	public boolean verifyPiece(final int pieceIndex, final byte[] block)
 			throws IOException, NoSuchAlgorithmException {
 
-		byte[] piece = new byte[this.pieceLength];
+		final byte[] piece = new byte[this.pieceLength];
 		System.arraycopy(block, 0, piece, 0, block.length);
 
 		byte[] hash = null;
 
-		MessageDigest sha = MessageDigest.getInstance("SHA-1");
+		final MessageDigest sha = MessageDigest.getInstance("SHA-1");
 		hash = sha.digest(piece);
 
 		if (Arrays.equals(this.tInfo.piece_hashes[pieceIndex].array(), hash)) {
-			LOGGER.log(Level.INFO, "Piece verified.");
+			RUBTClient.LOGGER.log(Level.INFO, "Piece verified.");
 			return true;
 		}
-		LOGGER.log(Level.WARNING, "Piece does not match.");
+		RUBTClient.LOGGER.log(Level.WARNING, "Piece does not match.");
 		return false;
 	}
 
+	/**
+	 * @param bit
+	 *            the bit to set
+	 */
+	private void setBitFieldBit(final int bit) {
+		byte[] tempBitField = this.getBitField();
+		tempBitField = Utility.setBit(tempBitField, bit);
+		this.setBitField(tempBitField);
+	}
 
 	/**
-	 * @param bit the bit to set
+	 * @param bit
+	 *            the bit to reset
 	 */
-	private void setBitFieldBit(int bit) {
-		byte[] tempBitField = getBitField();
-		tempBitField = Utility.setBit(tempBitField, bit);
-		setBitField(tempBitField);
-	}
-	
-	/**
-	 * @param bit the bit to reset
-	 */
-	private void resetBitFieldBit(int bit) {
-		byte[] tempBitField = getBitField();
+	private void resetBitFieldBit(final int bit) {
+		byte[] tempBitField = this.getBitField();
 		tempBitField = Utility.resetBit(tempBitField, bit);
-		setBitField(tempBitField);
+		this.setBitField(tempBitField);
 	}
 
 	/**
 	 * 
-	 * @param bitField the bitField to set
+	 * @param bitField
+	 *            the bitField to set
 	 */
-	private void setBitField(byte[] bitField) {
+	private void setBitField(final byte[] bitField) {
 		this.bitField = bitField;
 	}
 
@@ -652,13 +663,12 @@ public class RUBTClient extends Thread {
 	private byte[] getBitField() {
 		return this.bitField;
 	}
-	
+
 	private String getBitFieldString() {
-		StringBuilder builder = new StringBuilder();
+		final StringBuilder builder = new StringBuilder();
 		if (this.bitField != null) {
 			builder.append("bitField=");
-			for (byte b : this.bitField)
-			{
+			for (final byte b : this.bitField) {
 				// Add 0x100 then skip char(0) to left-pad bits with zeros
 				builder.append(Integer.toBinaryString(0x100 + b).substring(1));
 			}

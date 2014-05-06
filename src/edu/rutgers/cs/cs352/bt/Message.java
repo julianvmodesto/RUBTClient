@@ -1,4 +1,3 @@
-
 package edu.rutgers.cs.cs352.bt;
 
 import java.io.DataInputStream;
@@ -6,9 +5,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 /**
- * Represents a Peer Wire Protocol message, specifically those
- * after the handshake. Also contains methods for encoding and decoding
- * the messages according to the protocol specs.
+ * Represents a Peer Wire Protocol message, specifically those after the
+ * handshake. Also contains methods for encoding and decoding the messages
+ * according to the protocol specs.
  * 
  * @author Robert Moore
  * @author Julian Modesto
@@ -59,44 +58,48 @@ public class Message {
 	/**
 	 * A keep-alive message.
 	 */
-	public static final Message KEEP_ALIVE = new Message(ID_KEEP_ALIVE, (byte) 0);
+	public static final Message KEEP_ALIVE = new Message(Message.ID_KEEP_ALIVE,
+			(byte) 0);
 	/**
 	 * A choke message.
 	 */
-	public static final Message CHOKE = new Message(1, ID_CHOKE);
+	public static final Message CHOKE = new Message(1, Message.ID_CHOKE);
 	/**
 	 * An unchoke message.
 	 */
-	public static final Message UNCHOKE = new Message(1, ID_UNCHOKE);
+	public static final Message UNCHOKE = new Message(1, Message.ID_UNCHOKE);
 	/**
 	 * An interested message.
 	 */
-	public static final Message INTERESTED = new Message(1, ID_INTERESTED);
+	public static final Message INTERESTED = new Message(1,
+			Message.ID_INTERESTED);
 	/**
 	 * An uninterested message.
 	 */
-	public static final Message UNINTERESTED = new Message(1, ID_UNINTERESTED);
+	public static final Message UNINTERESTED = new Message(1,
+			Message.ID_UNINTERESTED);
 
 	public static final String[] ID_NAMES = { "Choke", "Unchoke", "Interested",
-		"Uninterested", "Have", "BitField", "Request", "Piece", "Cancel",
-	"KeepAlive" };
-
+			"Uninterested", "Have", "BitField", "Request", "Piece", "Cancel",
+			"KeepAlive" };
 
 	private final int length;
 
 	private final byte id;
 
-	protected Message(int length, byte id) {
+	protected Message(final int length, final byte id) {
 		this.length = length;
 		this.id = id;
 	}
 
 	/**
-	 * The superclass Message doesn't have any payload to write, so nothing will be written.
+	 * The superclass Message doesn't have any payload to write, so nothing will
+	 * be written.
+	 * 
 	 * @param dos
 	 * @throws IOException
 	 */
-	public void writePayload(DataOutputStream dos) throws IOException {
+	public void writePayload(final DataOutputStream dos) throws IOException {
 		// Nothing here
 	}
 
@@ -108,16 +111,16 @@ public class Message {
 	 * Reads the next Peer message from the provided DataInputStream.
 	 * 
 	 * @param din
-	 *          the input stream to read
+	 *            the input stream to read
 	 * @return the decoded message to {@code null} if an
 	 */
 	public static Message read(final DataInputStream din) throws IOException {
-		int length = din.readInt();
+		final int length = din.readInt();
 		if (length == 0) {
-			return KEEP_ALIVE;
+			return Message.KEEP_ALIVE;
 		}
 		// Read type
-		byte type = din.readByte();
+		final byte type = din.readByte();
 
 		int pieceIndex;
 		int blockOffset;
@@ -126,18 +129,18 @@ public class Message {
 
 		switch (type) {
 		case ID_CHOKE:
-			return CHOKE;
+			return Message.CHOKE;
 		case ID_UNCHOKE:
-			return UNCHOKE;
+			return Message.UNCHOKE;
 		case ID_INTERESTED:
-			return INTERESTED;
+			return Message.INTERESTED;
 		case ID_UNINTERESTED:
-			return UNINTERESTED;
+			return Message.UNINTERESTED;
 		case ID_HAVE:
 			pieceIndex = din.readInt();
 			return new HaveMessage(pieceIndex);
 		case ID_BIT_FIELD:
-			byte[] bitField = new byte[length - 1];
+			final byte[] bitField = new byte[length - 1];
 			din.readFully(bitField);
 			return new BitFieldMessage(length, bitField);
 		case ID_REQUEST:
@@ -160,9 +163,9 @@ public class Message {
 	 * Writes this message to the provided DataOutputStream.
 	 * 
 	 * @param dout
-	 *          the output stream to write.
+	 *            the output stream to write.
 	 * @throws IOException
-	 *           if an IOException occurs.
+	 *             if an IOException occurs.
 	 */
 	public void write(final DataOutputStream dout) throws IOException {
 		dout.writeInt(this.length);
@@ -176,26 +179,28 @@ public class Message {
 		dout.flush();
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#toString()
 	 */
 	@Override
 	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append(ID_NAMES[this.id]);
+		final StringBuilder builder = new StringBuilder();
+		builder.append(Message.ID_NAMES[this.id]);
 		builder.append("Message");
 		return builder.toString();
 	}
 
 	/**
 	 * A have message.
-	 *
+	 * 
 	 */
 	public static class HaveMessage extends Message {
 		private final int pieceIndex;
 
-		public HaveMessage(int pieceIndex) {
-			super(5, ID_HAVE);
+		public HaveMessage(final int pieceIndex) {
+			super(5, Message.ID_HAVE);
 			this.pieceIndex = pieceIndex;
 		}
 
@@ -204,16 +209,18 @@ public class Message {
 		}
 
 		@Override
-		public void writePayload(DataOutputStream dos) throws IOException {
+		public void writePayload(final DataOutputStream dos) throws IOException {
 			dos.writeInt(this.pieceIndex);
 		}
 
-		/* (non-Javadoc)
+		/*
+		 * (non-Javadoc)
+		 * 
 		 * @see java.lang.Object#toString()
 		 */
 		@Override
 		public String toString() {
-			StringBuilder builder = new StringBuilder();
+			final StringBuilder builder = new StringBuilder();
 			builder.append("HaveMessage [pieceIndex=");
 			builder.append(this.pieceIndex);
 			builder.append("]");
@@ -223,13 +230,13 @@ public class Message {
 
 	/**
 	 * A bit field message.
-	 *
+	 * 
 	 */
 	public static class BitFieldMessage extends Message {
 		private final byte[] bitField;
 
-		public BitFieldMessage(int length, byte[] bitField) {
-			super(1 + length, ID_BIT_FIELD);
+		public BitFieldMessage(final int length, final byte[] bitField) {
+			super(1 + length, Message.ID_BIT_FIELD);
 			this.bitField = bitField;
 		}
 
@@ -238,23 +245,25 @@ public class Message {
 		}
 
 		@Override
-		public void writePayload(DataOutputStream dos) throws IOException {
+		public void writePayload(final DataOutputStream dos) throws IOException {
 			dos.write(this.bitField);
 		}
 
-		/* (non-Javadoc)
+		/*
+		 * (non-Javadoc)
+		 * 
 		 * @see java.lang.Object#toString()
 		 */
 		@Override
 		public String toString() {
-			StringBuilder builder = new StringBuilder();
+			final StringBuilder builder = new StringBuilder();
 			builder.append("BitFieldMessage [");
 			if (this.bitField != null) {
 				builder.append("bitField=");
-				for (byte b : this.bitField)
-				{
+				for (final byte b : this.bitField) {
 					// Add 0x100 then skip char(0) to left-pad bits with zeros
-					builder.append(Integer.toBinaryString(0x100 + b).substring(1));
+					builder.append(Integer.toBinaryString(0x100 + b).substring(
+							1));
 				}
 			}
 			builder.append("]");
@@ -264,7 +273,7 @@ public class Message {
 
 	/**
 	 * A request message.
-	 *
+	 * 
 	 */
 	public static class RequestMessage extends Message {
 		/**
@@ -280,8 +289,9 @@ public class Message {
 		 */
 		private final int blockLength;
 
-		public RequestMessage(int pieceIndex, int blockOffset, int blockLength) {
-			super(13, ID_REQUEST);
+		public RequestMessage(final int pieceIndex, final int blockOffset,
+				final int blockLength) {
+			super(13, Message.ID_REQUEST);
 			this.pieceIndex = pieceIndex;
 			this.blockOffset = blockOffset;
 			this.blockLength = blockLength;
@@ -300,18 +310,20 @@ public class Message {
 		}
 
 		@Override
-		public void writePayload(DataOutputStream dos) throws IOException {
+		public void writePayload(final DataOutputStream dos) throws IOException {
 			dos.writeInt(this.pieceIndex);
 			dos.writeInt(this.blockOffset);
 			dos.writeInt(this.blockLength);
 		}
 
-		/* (non-Javadoc)
+		/*
+		 * (non-Javadoc)
+		 * 
 		 * @see java.lang.Object#toString()
 		 */
 		@Override
 		public String toString() {
-			StringBuilder builder = new StringBuilder();
+			final StringBuilder builder = new StringBuilder();
 			builder.append("RequestMessage [pieceIndex=");
 			builder.append(this.pieceIndex);
 			builder.append(", blockOffset=");
@@ -325,7 +337,7 @@ public class Message {
 
 	/**
 	 * A piece message.
-	 *
+	 * 
 	 */
 	public static class PieceMessage extends Message {
 		/**
@@ -341,8 +353,9 @@ public class Message {
 		 */
 		private final byte[] block;
 
-		public PieceMessage(int pieceIndex, int blockOffset, byte block[]) {
-			super(9 + block.length, ID_PIECE);
+		public PieceMessage(final int pieceIndex, final int blockOffset,
+				final byte block[]) {
+			super(9 + block.length, Message.ID_PIECE);
 			this.pieceIndex = pieceIndex;
 			this.blockOffset = blockOffset;
 			this.block = block;
@@ -361,18 +374,20 @@ public class Message {
 		}
 
 		@Override
-		public void writePayload(DataOutputStream dos) throws IOException {
+		public void writePayload(final DataOutputStream dos) throws IOException {
 			dos.writeInt(this.pieceIndex);
 			dos.writeInt(this.blockOffset);
 			dos.write(this.block);
 		}
 
-		/* (non-Javadoc)
+		/*
+		 * (non-Javadoc)
+		 * 
 		 * @see java.lang.Object#toString()
 		 */
 		@Override
 		public String toString() {
-			StringBuilder builder = new StringBuilder();
+			final StringBuilder builder = new StringBuilder();
 			builder.append("PieceMessage [pieceIndex=");
 			builder.append(this.pieceIndex);
 			builder.append(", blockOffset=");

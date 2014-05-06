@@ -19,16 +19,17 @@ import edu.rutgers.cs.cs352.bt.util.Utility;
 
 /**
  * @author Robert Moore
- *
+ * 
  */
 public class Peer extends Thread {
-	
+
 	private final static Logger LOGGER = Logger.getLogger(Peer.class.getName());
 
-	private static final byte[] BYTES_PROTOCOL = { 'B', 'i', 't', 'T', 'o', 'r', 'r',
-		'e', 'n', 't', ' ', 'p', 'r', 'o', 't', 'o', 'c', 'o', 'l' };
+	private static final byte[] BYTES_PROTOCOL = { 'B', 'i', 't', 'T', 'o',
+			'r', 'r', 'e', 'n', 't', ' ', 'p', 'r', 'o', 't', 'o', 'c', 'o',
+			'l' };
 
-	private byte[] peerId;
+	private final byte[] peerId;
 	private final byte[] infoHash;
 	private final byte[] clientId;
 
@@ -39,7 +40,8 @@ public class Peer extends Thread {
 		return this.peerId;
 	}
 
-	private String ip;
+	private final String ip;
+
 	/**
 	 * @return the peer IP
 	 */
@@ -47,20 +49,19 @@ public class Peer extends Thread {
 		return this.ip;
 	}
 
-	private int port;
+	private final int port;
 	private Socket socket;
-	
+
 	private LinkedBlockingQueue<MessageTask> tasks;
 
 	private byte[] bitField;
-	
 
 	/**
 	 * The block size that will be requested, 16K.
 	 */
 	public static final int BLOCK_LENGTH = 16384; // = 16Kb
 	// We should be requesting 16K blocks, while pieces are 32 blocks
-	
+
 	private byte[] piece;
 	private int pieceLength;
 	private int pieceIndex;
@@ -75,30 +76,33 @@ public class Peer extends Thread {
 	}
 
 	/**
-	 * @param bit the bit to set
+	 * @param bit
+	 *            the bit to set
 	 */
-	public void setBitFieldBit(int bit) {
-		byte[] tempBitField = getBitField();
+	public void setBitFieldBit(final int bit) {
+		byte[] tempBitField = this.getBitField();
 		tempBitField = Utility.setBit(tempBitField, bit);
-		setBitField(tempBitField);
+		this.setBitField(tempBitField);
 	}
-	
+
 	/**
 	 * 
-	 * @param bitField the bitField to set
+	 * @param bitField
+	 *            the bitField to set
 	 */
-	public synchronized void setBitField(byte[] bitField) {
+	public synchronized void setBitField(final byte[] bitField) {
 		this.bitField = bitField;
 	}
 
-	public void initializeBitField(int totalPieces) {
-		int bytes = (int) Math.ceil((double)totalPieces/8);
-		byte[] tempBitField = new byte[bytes];
-		
-		setBitField(tempBitField);
+	public void initializeBitField(final int totalPieces) {
+		final int bytes = (int) Math.ceil((double) totalPieces / 8);
+		final byte[] tempBitField = new byte[bytes];
+
+		this.setBitField(tempBitField);
 	}
-	
-	public Peer(byte[] peerId, String ip, Integer port, byte[] infoHash, byte[] clientId) {
+
+	public Peer(final byte[] peerId, final String ip, final Integer port,
+			final byte[] infoHash, final byte[] clientId) {
 		this.peerId = peerId;
 		this.ip = ip;
 		this.port = port == null ? -1 : port.intValue();
@@ -124,115 +128,130 @@ public class Peer extends Thread {
 	/**
 	 * True if the REMOTE peer is choked by the LOCAL client.
 	 */
-	private boolean remoteChoked=true;
+	private boolean remoteChoked = true;
 
 	private DataInputStream in = null;
 	private DataOutputStream out = null;
 
 	/**
 	 * Returns the current Interested state of the LOCAL CLIENT.
-	 * @return {@code true} if the LOCAL CLIENT is interested in the REMOTE PEER's pieces
+	 * 
+	 * @return {@code true} if the LOCAL CLIENT is interested in the REMOTE
+	 *         PEER's pieces
 	 */
-	public boolean amInterested(){
+	public boolean amInterested() {
 		return this.localInterested;
 	}
 
 	/**
 	 * Returns the current Choked state of the LOCAL CLIENT.
+	 * 
 	 * @return {@code true} if the LOCAL CLIENT is choked by the REMOTE PEER.
 	 */
-	public boolean amChoked(){
+	public boolean amChoked() {
 		return this.localChoked;
 	}
 
 	/**
 	 * Returns the current Interested state of the REMOTE CLIENT.
-	 * @return {@code true} if the REMOTE CLIENT is interested in the LOCAL PEER's pieces
+	 * 
+	 * @return {@code true} if the REMOTE CLIENT is interested in the LOCAL
+	 *         PEER's pieces
 	 */
-	public boolean remoteInterested(){
+	public boolean remoteInterested() {
 		return this.localInterested;
 	}
 
 	/**
 	 * Returns the current Choked state of the REMOTE CLIENT.
+	 * 
 	 * @return {@code true} if the REMOTE CLIENT is choked by the LOCAL PEER.
 	 */
-	public boolean remoteChoked(){
+	public boolean remoteChoked() {
 		return this.localChoked;
 	}
 
 	/**
-	 * @param localInterested the localInterested to set
+	 * @param localInterested
+	 *            the localInterested to set
 	 */
-	public synchronized void setLocalInterested(boolean localInterested) {
+	public synchronized void setLocalInterested(final boolean localInterested) {
 		this.localInterested = localInterested;
 	}
 
 	/**
-	 * @param remoteInterested the remoteInterested to set
+	 * @param remoteInterested
+	 *            the remoteInterested to set
 	 */
-	public synchronized void setRemoteInterested(boolean remoteInterested) {
+	public synchronized void setRemoteInterested(final boolean remoteInterested) {
 		this.remoteInterested = remoteInterested;
 	}
 
 	/**
-	 * @param localChoked the localChoked to set
+	 * @param localChoked
+	 *            the localChoked to set
 	 */
-	public synchronized void setLocalChoked(boolean localChoked) {
+	public synchronized void setLocalChoked(final boolean localChoked) {
 		this.localChoked = localChoked;
 	}
 
 	/**
-	 * @param remoteChoked the remoteChoked to set
+	 * @param remoteChoked
+	 *            the remoteChoked to set
 	 */
-	public synchronized void setRemoteChoked(boolean remoteChoked) {
+	public synchronized void setRemoteChoked(final boolean remoteChoked) {
 		this.remoteChoked = remoteChoked;
 	}
 
 	// Set up timer
 	private static final long KEEP_ALIVE_TIMEOUT = 120000;
-	private Timer keepAliveTimer = new Timer();
+	private final Timer keepAliveTimer = new Timer();
 	private long lastMessageTime = System.currentTimeMillis();
 
 	/**
 	 * Sends the provided message to this remote peer.
-	 * @param msg the Peer message to send
-	 * @throws IOException if an Exception is thrown by the underlying write operation.
+	 * 
+	 * @param msg
+	 *            the Peer message to send
+	 * @throws IOException
+	 *             if an Exception is thrown by the underlying write operation.
 	 */
-	public synchronized void sendMessage(final Message msg) throws IOException{
-		if(this.out == null){
-			throw new IOException("Output stream is null, cannot write message to " + this);
+	public synchronized void sendMessage(final Message msg) throws IOException {
+		if (this.out == null) {
+			throw new IOException(
+					"Output stream is null, cannot write message to " + this);
 		}
-		
+
 		msg.write(this.out);
 
 		// Update time stamp for keep-alive message timer
 		this.lastMessageTime = System.currentTimeMillis();
 
-		LOGGER.info("Sent " + msg + " to " + this);
+		Peer.LOGGER.info("Sent " + msg + " to " + this);
 	}
 
 	/**
 	 * Flag to keep the main loop running. Once false, the peer *should* exit.
 	 */
 	private volatile boolean keepRunning = true;
-	
+
 	@Override
 	public void run() {
 		try {
 			// Connect
-			connect();
+			this.connect();
 
-			/* Schedules a new anonymous implementation of a TimerTask that
-			 * will start now and execute every 10 seconds afterward.
+			/*
+			 * Schedules a new anonymous implementation of a TimerTask that will
+			 * start now and execute every 10 seconds afterward.
 			 */
-			this.keepAliveTimer.scheduleAtFixedRate(new TimerTask(){
+			this.keepAliveTimer.scheduleAtFixedRate(new TimerTask() {
 				@Override
-        public void run(){
+				public void run() {
 					// Let the peer figure out how/when to send a keep-alive
 					try {
 						Peer.this.checkAndSendKeepAlive();
-					} catch (Exception e) {
+					} catch (final Exception e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
@@ -241,43 +260,43 @@ public class Peer extends Thread {
 			}, new Date(), 10000);
 
 			// Send handshake
-			byte[] myHandshake = getHandshake();
+			final byte[] myHandshake = this.getHandshake();
 			this.out.write(myHandshake);
 			this.out.flush();
 
 			// Read response
-			byte[] peerHandshake = new byte[68];
+			final byte[] peerHandshake = new byte[68];
 			this.in.readFully(peerHandshake);
 
 			// Validate handshake
-			if (!validateHandshake(peerHandshake)) {
-				LOGGER.log(Level.WARNING,"Handshake is incorrect.");
+			if (!this.validateHandshake(peerHandshake)) {
+				Peer.LOGGER.log(Level.WARNING, "Handshake is incorrect.");
 				this.disconnect();
 			} else {
 				while (this.keepRunning) {
 					// read message from socket
 					try {
-						Message msg = Message.read(this.in);
-						LOGGER.info("Decoded " + msg);
+						final Message msg = Message.read(this.in);
+						Peer.LOGGER.info("Decoded " + msg);
 						if (msg.getId() == Message.ID_PIECE) {
-							buildPiece(msg);
+							this.buildPiece(msg);
 						} else {
-							LOGGER.info("Queued message: " + msg);
-							this.tasks.put(new MessageTask(this,msg));
+							Peer.LOGGER.info("Queued message: " + msg);
+							this.tasks.put(new MessageTask(this, msg));
 						}
-					} catch (IOException ioe) {
+					} catch (final IOException ioe) {
 						// TODO Auto-generated catch block
 						ioe.printStackTrace();
-						//TODO remove break and handle I/O Exception properly
+						// TODO remove break and handle I/O Exception properly
 						break;
-					} catch (InterruptedException ie) {
+					} catch (final InterruptedException ie) {
 						// TODO Auto-generated catch block
 						ie.printStackTrace();
 					}
 				}
 			}
 
-		} catch (IOException ioe) {
+		} catch (final IOException ioe) {
 			// TODO Auto-generated catch block
 			ioe.printStackTrace();
 		}
@@ -285,22 +304,26 @@ public class Peer extends Thread {
 
 	/**
 	 * Connects this peer.
-	 * @throws IOException 
+	 * 
+	 * @throws IOException
 	 */
 	public void connect() throws IOException {
 		// Create socket
 		this.socket = null;
 		try {
 			this.socket = new Socket(this.ip, this.port);
-		} catch (UnknownHostException uhe) {
-			LOGGER.log(Level.WARNING,"The IP address of the host could not be determined from " + this.ip + ".", uhe);
-		} catch (IOException ioe) {
-			LOGGER.log(Level.WARNING,"An I/O error occurred.",ioe);
+		} catch (final UnknownHostException uhe) {
+			Peer.LOGGER.log(Level.WARNING,
+					"The IP address of the host could not be determined from "
+							+ this.ip + ".", uhe);
+		} catch (final IOException ioe) {
+			Peer.LOGGER.log(Level.WARNING, "An I/O error occurred.", ioe);
 		}
 
 		// Check if connected once but not closed
-		if (this.socket == null && !this.socket.isClosed()) {
-			LOGGER.log(Level.WARNING,"Socket connected once but not closed.");
+		if ((this.socket == null) && !this.socket.isClosed()) {
+			Peer.LOGGER.log(Level.WARNING,
+					"Socket connected once but not closed.");
 		}
 
 		// Open IO streams
@@ -315,54 +338,64 @@ public class Peer extends Thread {
 		// Disconnect the socket, close data streams, catch all exceptions
 		try {
 			this.keepRunning = false;
-			
+
 			this.socket.close();
 
 			this.in.close();
-			
+
 			this.out.flush();
 			this.out.close();
-			
-			LOGGER.info("Disconnected peer: " + this);
-		} catch (IOException ioe) {
-			LOGGER.log(Level.WARNING,"I/O exception encountered when disconnecting peer " + this, ioe);
+
+			Peer.LOGGER.info("Disconnected peer: " + this);
+		} catch (final IOException ioe) {
+			Peer.LOGGER
+					.log(Level.WARNING,
+							"I/O exception encountered when disconnecting peer "
+									+ this, ioe);
 		}
 	}
 
 	/**
-	 * Sends a keep-alive message to the remote peer if the time between now
-	 * and the previous message exceeds the limit set by KEEP_ALIVE_TIMEOUT.
+	 * Sends a keep-alive message to the remote peer if the time between now and
+	 * the previous message exceeds the limit set by KEEP_ALIVE_TIMEOUT.
+	 * 
 	 * @author Robert Moore
-	 * @throws Exception 
+	 * @throws Exception
 	 */
-	protected void checkAndSendKeepAlive() throws Exception{
-		long now = System.currentTimeMillis();
-		if(now - this.lastMessageTime > KEEP_ALIVE_TIMEOUT){
-			sendMessage(Message.KEEP_ALIVE);
+	protected void checkAndSendKeepAlive() throws Exception {
+		final long now = System.currentTimeMillis();
+		if ((now - this.lastMessageTime) > Peer.KEEP_ALIVE_TIMEOUT) {
+			this.sendMessage(Message.KEEP_ALIVE);
 			// Validate that the timestamp was updated
-			if(now > this.lastMessageTime){
-				throw new Exception("Didn't update lastMessageTime when sending a keep-alive!");
+			if (now > this.lastMessageTime) {
+				throw new Exception(
+						"Didn't update lastMessageTime when sending a keep-alive!");
 			}
 		}
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#hashCode()
 	 */
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + Arrays.hashCode(this.peerId);
-		result = prime * result + ((this.ip == null) ? 0 : this.ip.hashCode());
+		result = (prime * result) + Arrays.hashCode(this.peerId);
+		result = (prime * result)
+				+ ((this.ip == null) ? 0 : this.ip.hashCode());
 		return result;
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
 	@Override
-	public boolean equals(Object obj) {
+	public boolean equals(final Object obj) {
 		if (this == obj) {
 			return true;
 		}
@@ -372,7 +405,7 @@ public class Peer extends Thread {
 		if (!(obj instanceof Peer)) {
 			return false;
 		}
-		Peer other = (Peer) obj;
+		final Peer other = (Peer) obj;
 		if (!Arrays.equals(this.peerId, other.peerId)) {
 			return false;
 		}
@@ -386,21 +419,23 @@ public class Peer extends Thread {
 		return true;
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#toString()
 	 */
 	@Override
 	public String toString() {
-		StringBuilder builder = new StringBuilder();
+		final StringBuilder builder = new StringBuilder();
 		builder.append("Peer [");
 		if (this.peerId != null) {
 			builder.append("peerId=");
-			for(int i = 0; i < this.peerId.length; ++i){
-			  if(this.peerId[i] < ' ' || this.peerId[i] > 126){
-			    builder.append(String.format("_%02X",this.peerId[i]));
-			  }else {
-			    builder.append((char)this.peerId[i]);
-			  }
+			for (final byte element : this.peerId) {
+				if ((element < ' ') || (element > 126)) {
+					builder.append(String.format("_%02X", element));
+				} else {
+					builder.append((char) element);
+				}
 			}
 			builder.append(", ");
 		}
@@ -421,30 +456,35 @@ public class Peer extends Thread {
 	 * The byte array is preallocated and then filled with System.arraycopy.
 	 * 
 	 * @author Julian Modesto
-	 * @param infohash the 20-byte SHA-1 hash of the bencoded form of the info value from the metainfo (.torrent) file
-	 * @param peerId the peer id generated by the client
+	 * @param infohash
+	 *            the 20-byte SHA-1 hash of the bencoded form of the info value
+	 *            from the metainfo (.torrent) file
+	 * @param peerId
+	 *            the peer id generated by the client
 	 * @return the handshake byte array
 	 */
 	private byte[] getHandshake() {
 		// Preallocate bytes for handshake
-		byte[] handshake = new byte[68];
+		final byte[] handshake = new byte[68];
 
 		// Header 19:BitTorrent protocol
 		// Begin with byte 19
 		handshake[0] = 19;
 
 		// Add "BitTorrent protocol"
-		System.arraycopy(BYTES_PROTOCOL, 0, handshake, 1, BYTES_PROTOCOL.length);
+		System.arraycopy(Peer.BYTES_PROTOCOL, 0, handshake, 1,
+				Peer.BYTES_PROTOCOL.length);
 
-		// 8 reserved bytes 20-27 are already initialized to 0; skip + omit commented-out code below
+		// 8 reserved bytes 20-27 are already initialized to 0; skip + omit
+		// commented-out code below
 
 		// Add infohash SHA-1 hash - not encoded
 		System.arraycopy(this.infoHash, 0, handshake, 28, this.infoHash.length);
 
 		// Add peer id, which should match the infohash
-		System.arraycopy(this.clientId, 0, handshake, 48, this.clientId.length);	
+		System.arraycopy(this.clientId, 0, handshake, 48, this.clientId.length);
 
-		LOGGER.log(Level.CONFIG,"Generated handshake for " + this);
+		Peer.LOGGER.log(Level.CONFIG, "Generated handshake for " + this);
 
 		return handshake;
 	}
@@ -456,7 +496,7 @@ public class Peer extends Thread {
 	 * @param otherHandshake
 	 * @return the truth value for the equality of the handshakes
 	 */
-	private boolean validateHandshake(byte[] otherHandshake) {
+	private boolean validateHandshake(final byte[] otherHandshake) {
 
 		if (otherHandshake == null) {
 			return false;
@@ -468,88 +508,102 @@ public class Peer extends Thread {
 		}
 
 		// Check protocol
-		byte[] otherProtocol = new byte[19];
-		System.arraycopy(otherHandshake, 1, otherProtocol, 0, BYTES_PROTOCOL.length);
-		if (!Arrays.equals(otherProtocol, BYTES_PROTOCOL)) {
+		final byte[] otherProtocol = new byte[19];
+		System.arraycopy(otherHandshake, 1, otherProtocol, 0,
+				Peer.BYTES_PROTOCOL.length);
+		if (!Arrays.equals(otherProtocol, Peer.BYTES_PROTOCOL)) {
 			return false;
 		}
 
 		// Skip reserved bytes
 
 		// Check info hash against info hash from .torrent file
-		byte[] otherInfoHash = new byte[20];
+		final byte[] otherInfoHash = new byte[20];
 		System.arraycopy(otherHandshake, 28, otherInfoHash, 0, 20);
 		if (!Arrays.equals(otherInfoHash, this.infoHash)) {
 			return false;
 		}
 
 		// Check that peer ID is the same as from tracker
-		byte[] otherPeerId = new byte[20];
+		final byte[] otherPeerId = new byte[20];
 		System.arraycopy(otherHandshake, 48, otherPeerId, 0, 20);
 		if (!Arrays.equals(otherPeerId, this.peerId)) {
 			return false;
 		}
 
-		LOGGER.info("Handshake validated for " + this);
+		Peer.LOGGER.info("Handshake validated for " + this);
 
 		return true;
 	}
 
-	public void setTasks(LinkedBlockingQueue<MessageTask> tasks) {
+	public void setTasks(final LinkedBlockingQueue<MessageTask> tasks) {
 		this.tasks = tasks;
 	}
 
-	public void requestPiece(int pieceIndex, int pieceLength) throws IOException {
+	public void requestPiece(final int pieceIndex, final int pieceLength)
+			throws IOException {
 		this.pieceIndex = pieceIndex;
 		this.pieceLength = pieceLength;
 		this.piece = new byte[pieceLength];
-		this.lastBlockLength = this.pieceLength % BLOCK_LENGTH;
-		
+		this.lastBlockLength = this.pieceLength % Peer.BLOCK_LENGTH;
+
 		this.blockOffset = 0;
-		
+
 		RequestMessage requestMsg;
-		if (this.blockOffset + this.lastBlockLength >= this.pieceLength) {
+		if ((this.blockOffset + this.lastBlockLength) >= this.pieceLength) {
 			// Request the last piece
-			requestMsg = new RequestMessage(this.pieceIndex, this.blockOffset, this.lastBlockLength);
+			requestMsg = new RequestMessage(this.pieceIndex, this.blockOffset,
+					this.lastBlockLength);
 		} else {
-			requestMsg = new RequestMessage(this.pieceIndex, this.blockOffset, BLOCK_LENGTH);
+			requestMsg = new RequestMessage(this.pieceIndex, this.blockOffset,
+					Peer.BLOCK_LENGTH);
 		}
-		sendMessage(requestMsg);
+		this.sendMessage(requestMsg);
 	}
 
-	
-	private void buildPiece(Message msg) throws InterruptedException, IOException {
+	private void buildPiece(final Message msg) throws InterruptedException,
+			IOException {
 		if (msg.getId() == Message.ID_PIECE) {
-			PieceMessage pieceMsg = (PieceMessage) msg;
+			final PieceMessage pieceMsg = (PieceMessage) msg;
 			if (pieceMsg.getPieceIndex() != this.pieceIndex) {
-				LOGGER.warning("Incorrect piece received from " + pieceMsg);
+				Peer.LOGGER
+						.warning("Incorrect piece received from " + pieceMsg);
 			} else if (pieceMsg.getBlockOffset() != this.blockOffset) {
-				LOGGER.warning("Incorrect block offset received from " + pieceMsg);
+				Peer.LOGGER.warning("Incorrect block offset received from "
+						+ pieceMsg);
 			} else {
 				if (pieceMsg.getBlock().length == this.lastBlockLength) {
 					// Write the last block of piece
-					System.arraycopy(pieceMsg.getBlock(), 0, this.piece, this.blockOffset, this.lastBlockLength);
+					System.arraycopy(pieceMsg.getBlock(), 0, this.piece,
+							this.blockOffset, this.lastBlockLength);
 					// Queue the full piece
-					PieceMessage returnMsg = new PieceMessage(this.pieceIndex, 0, this.piece);
-					tasks.put(new MessageTask(this, returnMsg));
-				} else if (pieceMsg.getBlockOffset() + BLOCK_LENGTH == this.pieceLength) {
+					final PieceMessage returnMsg = new PieceMessage(
+							this.pieceIndex, 0, this.piece);
+					this.tasks.put(new MessageTask(this, returnMsg));
+				} else if ((pieceMsg.getBlockOffset() + Peer.BLOCK_LENGTH) == this.pieceLength) {
 					// Write the last block of piece
-					System.arraycopy(pieceMsg.getBlock(), 0, this.piece, this.blockOffset, BLOCK_LENGTH);
+					System.arraycopy(pieceMsg.getBlock(), 0, this.piece,
+							this.blockOffset, Peer.BLOCK_LENGTH);
 					// Queue the full piece
-					PieceMessage returnMsg = new PieceMessage(this.pieceIndex, 0, this.piece);
-					tasks.put(new MessageTask(this, returnMsg));
+					final PieceMessage returnMsg = new PieceMessage(
+							this.pieceIndex, 0, this.piece);
+					this.tasks.put(new MessageTask(this, returnMsg));
 				} else {
-					System.arraycopy(pieceMsg.getBlock(), 0, this.piece, this.blockOffset, BLOCK_LENGTH);
+					System.arraycopy(pieceMsg.getBlock(), 0, this.piece,
+							this.blockOffset, Peer.BLOCK_LENGTH);
 					RequestMessage requestMsg;
-					if (this.blockOffset + BLOCK_LENGTH > this.pieceLength) {
+					if ((this.blockOffset + Peer.BLOCK_LENGTH) > this.pieceLength) {
 						// Request the last piece
-						this.blockOffset = this.blockOffset + this.lastBlockLength;
-						requestMsg = new RequestMessage(this.pieceIndex, blockOffset, this.lastBlockLength);
+						this.blockOffset = this.blockOffset
+								+ this.lastBlockLength;
+						requestMsg = new RequestMessage(this.pieceIndex,
+								this.blockOffset, this.lastBlockLength);
 					} else {
-						this.blockOffset = this.blockOffset + BLOCK_LENGTH;
-						requestMsg = new RequestMessage(this.pieceIndex, blockOffset, BLOCK_LENGTH);
+						this.blockOffset = this.blockOffset + Peer.BLOCK_LENGTH;
+						requestMsg = new RequestMessage(this.pieceIndex,
+								this.blockOffset, Peer.BLOCK_LENGTH);
 					}
-					sendMessage(requestMsg);	
+					this.sendMessage(requestMsg);
 				}
 			}
 		}
