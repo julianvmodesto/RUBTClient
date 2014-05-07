@@ -256,17 +256,7 @@ public class Tracker {
 			throw new BencodingException(
 					"A bencoding exception occurred when decoding tracker response.");
 		}
-
-		// Catch warning message
-		String warningMessage = null;
-		if (responseMap.containsKey(Tracker.KEY_WARNING_MESSAGE)
-				&& responseMap.get(Tracker.KEY_WARNING_MESSAGE) != null) {
-			warningMessage = (String) responseMap
-					.get(Tracker.KEY_WARNING_MESSAGE);
-			Tracker.LOGGER.log(Level.WARNING, "Warning:");
-			Tracker.LOGGER.log(Level.WARNING, warningMessage);
-		}
-
+		
 		// Set the interval
 		if (responseMap.containsKey(Tracker.KEY_INTERVAL)) {
 			this.interval = ((Integer) responseMap.get(Tracker.KEY_INTERVAL))
