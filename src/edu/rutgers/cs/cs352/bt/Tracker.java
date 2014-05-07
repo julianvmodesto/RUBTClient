@@ -283,10 +283,11 @@ public class Tracker {
 			Tracker.LOGGER.info("Minimal interval specified in torrent info.");
 		} else {
 			this.interval = (int) (this.interval / 2.0);
-			Tracker.LOGGER.info("No minimal interval specified in torrent info.");
+			Tracker.LOGGER
+					.info("No minimal interval specified in torrent info.");
 		}
-		Tracker.LOGGER.log(Level.INFO, "Minimal interval for announce = "
-				+ this.interval + " seconds");
+		Tracker.LOGGER.info("Minimal interval for announce = " + this.interval
+				+ " seconds");
 
 		// Decode list of bencodeded dictionaries corresponding to peers
 		ArrayList<HashMap<ByteBuffer, Object>> encodedPeerList = null;

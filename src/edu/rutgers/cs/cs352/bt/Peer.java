@@ -548,7 +548,8 @@ public class Peer extends Thread {
 	}
 
 	/**
-	 * @param client the client to set
+	 * @param client
+	 *            the client to set
 	 */
 	public void setClient(RUBTClient client) {
 		this.client = client;
@@ -588,10 +589,10 @@ public class Peer extends Thread {
 		// Make sure this is a Piece Message
 		if (msg.getId() == Message.ID_PIECE) {
 			final PieceMessage pieceMsg = (PieceMessage) msg;
-			
+
 			// Add to client downloaded
 			this.client.addDownloaded(pieceMsg.getBlock().length);
-			
+
 			// Confirm that a Piece Message was received for the piece currently
 			// being built by this Peer. The block offset should indicate that
 			// the expected block is being worked on, as well.
