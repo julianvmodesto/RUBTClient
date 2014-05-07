@@ -166,6 +166,7 @@ public class RUBTClient extends Thread {
 
 	/**
 	 * Retrieve the amount of bytes the client has downladed.
+	 * 
 	 * @return the amount of bytes downloaded
 	 */
 	private int getDownloaded() {
@@ -174,6 +175,7 @@ public class RUBTClient extends Thread {
 
 	/**
 	 * Add to the amount of bytes the client has downloaded.
+	 * 
 	 * @param downloaded
 	 */
 	public synchronized void addDownloaded(int downloaded) {
@@ -436,6 +438,10 @@ public class RUBTClient extends Thread {
 						this.outFile.write(pieceMsg.getBlock());
 						this.setBitFieldBit(pieceMsg.getPieceIndex());
 
+						// Recalculate amount left to download
+						this.left += -pieceMsg.getBlock().length;
+						RUBTClient.LOGGER.info("Amount left = " + this.left);
+
 						// Notify peers that the piece is complete
 						this.notifyPeers(pieceMsg.getPieceIndex());
 					} else {
@@ -495,8 +501,8 @@ public class RUBTClient extends Thread {
 								.getIp().equals("128.6.171.131"))
 						&& !this.peers.contains(newPeer)) {
 					this.peers.add(newPeer);
-					RUBTClient.LOGGER.log(Level.INFO,
-							"Connecting to new peer: " + newPeer);
+					RUBTClient.LOGGER
+							.info("Connecting to new peer: " + newPeer);
 					newPeer.setClient(this);
 					newPeer.setTasks(this.tasks);
 					newPeer.start();
@@ -603,7 +609,7 @@ public class RUBTClient extends Thread {
 	 */
 	private boolean amInterested(final byte[] peerBitField) {
 		if (this.left == 0) {
-			RUBTClient.LOGGER.log(Level.INFO, "Nothing left!");
+			RUBTClient.LOGGER.info("Nothing left!");
 			return false;
 		}
 
@@ -645,7 +651,7 @@ public class RUBTClient extends Thread {
 		hash = sha.digest(piece);
 
 		if (Arrays.equals(this.tInfo.piece_hashes[pieceIndex].array(), hash)) {
-			RUBTClient.LOGGER.log(Level.INFO, "Piece verified.");
+			RUBTClient.LOGGER.info("Piece verified.");
 			return true;
 		}
 		RUBTClient.LOGGER.log(Level.WARNING, "Piece does not match.");
@@ -653,7 +659,18 @@ public class RUBTClient extends Thread {
 	}
 
 	private void notifyPeers(final int pieceIndex) {
-
+		for (Peer p : this.peers) {
+			try {
+				p.sendMessage(new Message.HaveMessage(pieceIndex));
+			} catch (IOException e) {
+				RUBTClient.LOGGER
+						.warning("I/O exception encountered when notifying peer "
+								+ p
+								+ "about piece [pieceIndex="
+								+ pieceIndex
+								+ "]");
+			}
+		}
 	}
 
 	/**

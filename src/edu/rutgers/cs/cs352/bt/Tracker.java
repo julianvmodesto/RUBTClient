@@ -26,6 +26,9 @@ import edu.rutgers.cs.cs352.bt.util.Utility;
  */
 public class Tracker {
 
+	/**
+	 * Logger for this class.
+	 */
 	private final static Logger LOGGER = Logger.getLogger(Tracker.class
 			.getName());
 
@@ -99,12 +102,29 @@ public class Tracker {
 	private static final ByteBuffer KEY_PORT = ByteBuffer.wrap(new byte[] {
 			'p', 'o', 'r', 't' });
 
+	/**
+	 * The infohash that identifies the torrent.
+	 */
 	private final byte[] infoHash;
+
+	/**
+	 * The unique ID to identify the local BT client.
+	 */
 	private final byte[] clientId;
+
+	/**
+	 * The announce URL of the tracker.
+	 */
 	private final String announceUrl;
+
+	/**
+	 * The port number that the client is listening on.
+	 */
 	private int port;
 
 	/**
+	 * Retrieves the port that the client is currently listening on.
+	 * 
 	 * @return the port
 	 */
 	public int getPort() {
@@ -112,6 +132,8 @@ public class Tracker {
 	}
 
 	/**
+	 * Updates the port that the client is listening on.
+	 * 
 	 * @param port
 	 *            the port to set
 	 */
@@ -182,7 +204,7 @@ public class Tracker {
 			url = new URL(request.toString());
 		} catch (final MalformedURLException murle) {
 			throw new MalformedURLException(
-					"A mlformed URL exception was encountered.");
+					"A malformed URL exception was encountered.");
 		}
 
 		Tracker.LOGGER.info("Announcing: " + request.toString());
@@ -192,7 +214,7 @@ public class Tracker {
 			httpConnection = (HttpURLConnection) url.openConnection();
 		} catch (final IOException ioe) {
 			throw new IOException(
-					"An I/O exception occurred when openning HTTP connection");
+					"An I/O exception occurred when openning the HTTP connection");
 		}
 		try {
 			httpConnection.setRequestMethod("GET");
@@ -209,7 +231,7 @@ public class Tracker {
 			throw new IOException(
 					"An I/O exception occurred when getting the HTTP response code");
 		}
-		Tracker.LOGGER.log(Level.INFO, "Response Code: " + responseCode);
+		Tracker.LOGGER.info("Response Code: " + responseCode);
 
 		// Receive the response
 		// Read each byte from input stream and write to an output stream
@@ -235,18 +257,10 @@ public class Tracker {
 					"A bencoding exception occurred when decoding tracker response.");
 		}
 
-		// Catch request failure
-		// String errorMessage = null;
-		// if (responseMap.containsKey(KEY_FAILURE_REASON)) {
-		// errorMessage = (String) responseMap.get(KEY_FAILURE_REASON);
-		// LOGGER.log(Level.SEVERE,"Request failed");
-		// LOGGER.log(Level.SEVERE,errorMessage);
-		// System.exit(1);
-		// }
-
 		// Catch warning message
 		String warningMessage = null;
-		if (responseMap.containsKey(Tracker.KEY_WARNING_MESSAGE)) {
+		if (responseMap.containsKey(Tracker.KEY_WARNING_MESSAGE)
+				&& responseMap.get(Tracker.KEY_WARNING_MESSAGE) != null) {
 			warningMessage = (String) responseMap
 					.get(Tracker.KEY_WARNING_MESSAGE);
 			Tracker.LOGGER.log(Level.WARNING, "Warning:");
@@ -266,12 +280,10 @@ public class Tracker {
 		if (responseMap.containsKey(Tracker.KEY_MIN_INTERVAL)) {
 			this.interval = ((Integer) responseMap
 					.get(Tracker.KEY_MIN_INTERVAL)).intValue();
-			Tracker.LOGGER.log(Level.CONFIG,
-					"Minimal interval specified in torrent info.");
+			Tracker.LOGGER.info("Minimal interval specified in torrent info.");
 		} else {
-			this.interval = this.interval / 2;
-			Tracker.LOGGER.log(Level.CONFIG,
-					"No minimal interval specified in torrent info.");
+			this.interval = (int) (this.interval / 2.0);
+			Tracker.LOGGER.info("No minimal interval specified in torrent info.");
 		}
 		Tracker.LOGGER.log(Level.INFO, "Minimal interval for announce = "
 				+ this.interval + " seconds");
@@ -321,7 +333,7 @@ public class Tracker {
 					this.clientId);
 			peerList.add(peer);
 
-			Tracker.LOGGER.log(Level.CONFIG, "Peer in torrent: " + peer);
+			Tracker.LOGGER.info("Peer in torrent: " + peer);
 		}
 
 		return peerList;
