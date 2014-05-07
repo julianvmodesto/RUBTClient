@@ -20,7 +20,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import edu.rutgers.cs.cs352.bt.Message.BitFieldMessage;
+import edu.rutgers.cs.cs352.bt.Message.BitfieldMessage;
 import edu.rutgers.cs.cs352.bt.Message.HaveMessage;
 import edu.rutgers.cs.cs352.bt.Message.PieceMessage;
 import edu.rutgers.cs.cs352.bt.exceptions.BencodingException;
@@ -149,7 +149,7 @@ public class RUBTClient extends Thread {
 	/**
 	 * The local client's bitfield.
 	 */
-	private byte[] bitField;
+	private byte[] bitfield;
 
 	/**
 	 * The amount of bytes downloaded by the client from peers.
@@ -217,6 +217,10 @@ public class RUBTClient extends Thread {
 	 */
 	private volatile boolean keepRunning = true;
 
+	/**
+	 * Define the timed task to announce to the tracker.
+	 * 
+	 */
 	private static class TrackerAnnounceTask extends TimerTask {
 		private final RUBTClient client;
 
@@ -228,10 +232,12 @@ public class RUBTClient extends Thread {
 		public void run() {
 			List<Peer> peers = null;
 			try {
+				// Get peers
 				peers = this.client.tracker.announce(
 						this.client.getDownloaded(), this.client.getUploaded(),
 						this.client.getLeft(), "");
 
+				// Add new peers
 				if ((peers != null) && !peers.isEmpty()) {
 					this.client.addPeers(peers);
 				}
@@ -251,6 +257,15 @@ public class RUBTClient extends Thread {
 		}
 	}
 
+	/**
+	 * Constructor for a new RUBTClient that downloads a file as from the
+	 * specification in the torrent file of interest.
+	 * 
+	 * @param tInfo
+	 *            the TorrentInfo object containing torrent metadata
+	 * @param outFile
+	 *            the file to write the download to
+	 */
 	public RUBTClient(final TorrentInfo tInfo, final String outFile) {
 		this.tInfo = tInfo;
 		this.outFileName = outFile;
@@ -274,6 +289,7 @@ public class RUBTClient extends Thread {
 		RUBTClient.LOGGER.info("Total pieces: " + this.totalPieces);
 		RUBTClient.LOGGER.info("File length: " + this.fileLength);
 		RUBTClient.LOGGER.info("Piece length: " + this.pieceLength);
+		RUBTClient.LOGGER.info("Last piece length: " + (this.fileLength % this.pieceLength));
 	}
 
 	@Override
@@ -281,18 +297,30 @@ public class RUBTClient extends Thread {
 
 		try {
 			this.outFile = new RandomAccessFile(this.outFileName, "rw");
+
+			// Allocate the total file
+			if (this.outFile.length() != this.fileLength) {
+				this.outFile.setLength(this.fileLength);
+			}
+			
+			// Set client bitfield
+			this.setBitfield();
+			
+			RUBTClient.LOGGER.info("Starting bitfield: "
+					+ this.getBitfieldString());
+
 		} catch (final FileNotFoundException fnfe) {
 			RUBTClient.LOGGER.log(Level.SEVERE,
 					"Unable to open output file for writing!", fnfe);
 			// Exit right now, since nothing else was started yet
 			return;
+		} catch (IOException ioe) {
+			RUBTClient.LOGGER.log(Level.SEVERE,
+					"I/O exception encountered when accessing output file!",
+					ioe);
+			// Exit right now, since nothing else was started yet
+			return;
 		}
-
-		// TODO update from output file
-		final int bytes = (int) Math.ceil((double) this.totalPieces / 8);
-
-		// Set client bit field
-		this.bitField = new byte[bytes];
 
 		// Send "started" announce and attempt to connect through ports 6881 -
 		// 6889
@@ -383,14 +411,14 @@ public class RUBTClient extends Thread {
 					peer.setRemoteInterested(false);
 					peer.sendMessage(Message.KEEP_ALIVE);
 					break;
-				case Message.ID_BIT_FIELD:
-					// Set peer bit field
-					final BitFieldMessage bitFieldMsg = (BitFieldMessage) msg;
-					peer.setBitField(bitFieldMsg.getBitField());
+				case Message.ID_BITFIELD:
+					// Set peer bitfield
+					final BitfieldMessage bitfieldMsg = (BitfieldMessage) msg;
+					peer.setBitfield(bitfieldMsg.getBitfield());
 
-					// Inspect bit field
+					// Inspect bitfield
 					peer.setLocalInterested(this.amInterested(peer
-							.getBitField()));
+							.getBitfield()));
 					if (!peer.amChoked() && peer.amInterested()) {
 						peer.sendMessage(Message.INTERESTED);
 					} else if (peer.amInterested()) {
@@ -402,13 +430,13 @@ public class RUBTClient extends Thread {
 				case Message.ID_HAVE:
 					final HaveMessage haveMsg = (HaveMessage) msg;
 
-					if (peer.getBitField() == null) {
-						peer.initializeBitField(this.totalPieces);
+					if (peer.getBitfield() == null) {
+						peer.initializeBitfield(this.totalPieces);
 					}
-					peer.setBitFieldBit(haveMsg.getPieceIndex());
+					peer.setBitfieldBit(haveMsg.getPieceIndex());
 
 					peer.setLocalInterested(this.amInterested(peer
-							.getBitField()));
+							.getBitfield()));
 					if (!peer.amChoked() && peer.amInterested()) {
 						peer.sendMessage(Message.INTERESTED);
 						peer.setLocalInterested(true);
@@ -436,7 +464,7 @@ public class RUBTClient extends Thread {
 						this.outFile.seek(pieceMsg.getPieceIndex()
 								* this.pieceLength);
 						this.outFile.write(pieceMsg.getBlock());
-						this.setBitFieldBit(pieceMsg.getPieceIndex());
+						this.setBitfieldBit(pieceMsg.getPieceIndex());
 
 						// Recalculate amount left to download
 						this.left += -pieceMsg.getBlock().length;
@@ -448,10 +476,10 @@ public class RUBTClient extends Thread {
 						// Drop piece
 						RUBTClient.LOGGER.warning("Dropping piece [pieceIndex="
 								+ pieceMsg.getPieceIndex() + "]");
-						this.resetBitFieldBit(pieceMsg.getPieceIndex());
+						this.resetBitfieldBit(pieceMsg.getPieceIndex());
 					}
-					RUBTClient.LOGGER.info("Updated my bit field: "
-							+ this.getBitFieldString());
+					RUBTClient.LOGGER.info("Updated my bitfield: "
+							+ this.getBitfieldString());
 
 					if (!peer.amChoked() && peer.amInterested()) {
 						this.chooseAndRequestPiece(peer);
@@ -475,9 +503,6 @@ public class RUBTClient extends Thread {
 			} catch (final NullPointerException npe) {
 				// TODO Auto-generated catch block
 				npe.printStackTrace();
-			} catch (final NoSuchAlgorithmException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
 		}
 	}
@@ -490,12 +515,12 @@ public class RUBTClient extends Thread {
 	 *            the list of potentially new peers from the tracker
 	 */
 	void addPeers(final List<Peer> newPeers) {
-		// Filter by IP address
 
 		if (newPeers == null) {
 			RUBTClient.LOGGER.log(Level.WARNING, "No new peers to start.");
 		} else {
 			for (final Peer newPeer : newPeers) {
+				// Filter peers by IP address
 				if ((newPeer != null)
 						&& (newPeer.getIp().equals("128.6.171.130") || newPeer
 								.getIp().equals("128.6.171.131"))
@@ -520,23 +545,23 @@ public class RUBTClient extends Thread {
 	 */
 	private void chooseAndRequestPiece(final Peer peer) throws IOException {
 
-		// Inspect bit fields and choose piece
-		final byte[] peerBitField = peer.getBitField();
+		// Inspect bitfields and choose piece
+		final byte[] peerBitfield = peer.getBitfield();
 		// Check pieces from rangeMin=0 to rangeMax=totalPieces
 		// rangeMin = pieceIndex
 		// rangeMax = totalPieces
 		int pieceIndex;
-		for (pieceIndex = 0; pieceIndex < (this.totalPieces - 1); pieceIndex++) {
-			if (!Utility.isSetBit(this.bitField, pieceIndex)
-					&& Utility.isSetBit(peerBitField, pieceIndex)) {
+		for (pieceIndex = 0; pieceIndex < this.totalPieces ; pieceIndex++) {
+			if (!Utility.isSetBit(this.bitfield, pieceIndex)
+					&& Utility.isSetBit(peerBitfield, pieceIndex)) {
 				break;
 			}
 		}
-		this.setBitFieldBit(pieceIndex);
+		this.setBitfieldBit(pieceIndex);
 
 		int requestedPieceLength = 0;
 		// Check if requesting last piece
-		if (pieceIndex == (this.totalPieces - 2)) {
+		if (pieceIndex == (this.totalPieces - 1)) {
 			// Last piece is irregularly-sized
 			requestedPieceLength = this.fileLength % this.pieceLength;
 		} else {
@@ -604,19 +629,19 @@ public class RUBTClient extends Thread {
 	 * Determines whether the client is interested in downloading from the
 	 * remote peer.
 	 * 
-	 * @param peerBitField
+	 * @param peerBitfield
 	 * @return
 	 */
-	private boolean amInterested(final byte[] peerBitField) {
+	private boolean amInterested(final byte[] peerBitfield) {
 		if (this.left == 0) {
 			RUBTClient.LOGGER.info("Nothing left!");
 			return false;
 		}
 
-		// Inspect bit field
+		// Inspect bitfield
 		for (int pieceIndex = 0; pieceIndex < this.totalPieces; pieceIndex++) {
-			if (!Utility.isSetBit(this.bitField, pieceIndex)
-					&& Utility.isSetBit(peerBitField, pieceIndex)) {
+			if (!Utility.isSetBit(this.bitfield, pieceIndex)
+					&& Utility.isSetBit(peerBitfield, pieceIndex)) {
 				RUBTClient.LOGGER.info("Still interested!");
 				return true;
 			}
@@ -640,15 +665,21 @@ public class RUBTClient extends Thread {
 	 * 
 	 */
 	private boolean verifyPiece(final int pieceIndex, final byte[] block)
-			throws IOException, NoSuchAlgorithmException {
+			throws IOException {
 
 		final byte[] piece = new byte[this.pieceLength];
 		System.arraycopy(block, 0, piece, 0, block.length);
 
 		byte[] hash = null;
 
-		final MessageDigest sha = MessageDigest.getInstance("SHA-1");
-		hash = sha.digest(piece);
+		MessageDigest sha;
+		try {
+			sha = MessageDigest.getInstance("SHA-1");
+			hash = sha.digest(piece);
+		} catch (NoSuchAlgorithmException nsae) {
+			// Won't happen!
+		}
+		
 
 		if (Arrays.equals(this.tInfo.piece_hashes[pieceIndex].array(), hash)) {
 			RUBTClient.LOGGER.info("Piece verified.");
@@ -672,48 +703,85 @@ public class RUBTClient extends Thread {
 			}
 		}
 	}
+	
+	/**
+	 * Updates the bitfield according to the existing output file.
+	 * @throws IOException 
+	 */
+	private void setBitfield() throws IOException {
+		final int bytes = (int) Math.ceil(this.totalPieces / 8.0);
+		this.bitfield = new byte[bytes];
+		
+		for (int pieceIndex = 0; pieceIndex < this.totalPieces; pieceIndex++) {
+			byte[] temp;
+			if (pieceIndex == this.totalPieces - 1) {
+				// Last piece
+				temp = new byte[this.fileLength % this.pieceLength];
+			} else {
+				temp = new byte[this.pieceLength];
+			}
+			this.outFile.read(temp);
+			if (this.verifyPiece(pieceIndex, temp)) {
+				this.setBitfieldBit(pieceIndex);
+			} else {
+				this.left += temp.length;
+			}
+		}
+	}
 
 	/**
+	 * Sets a specific bit in the bitfield to 1.
+	 * 
 	 * @param bit
 	 *            the bit to set
 	 */
-	private void setBitFieldBit(final int bit) {
-		byte[] tempBitField = this.getBitField();
-		tempBitField = Utility.setBit(tempBitField, bit);
-		this.setBitField(tempBitField);
+	private void setBitfieldBit(final int bit) {
+		byte[] tempBitfield = this.getBitfield();
+		tempBitfield = Utility.setBit(tempBitfield, bit);
+		this.setBitfield(tempBitfield);
 	}
 
 	/**
+	 * Resets a specific bit in the bitfield to 0.
+	 * 
 	 * @param bit
 	 *            the bit to reset
 	 */
-	private void resetBitFieldBit(final int bit) {
-		byte[] tempBitField = this.getBitField();
-		tempBitField = Utility.resetBit(tempBitField, bit);
-		this.setBitField(tempBitField);
+	private void resetBitfieldBit(final int bit) {
+		byte[] tempBitfield = this.getBitfield();
+		tempBitfield = Utility.resetBit(tempBitfield, bit);
+		this.setBitfield(tempBitfield);
 	}
 
 	/**
+	 * Sets the byte array as the updated client bitfield.
 	 * 
-	 * @param bitField
-	 *            the bitField to set
+	 * @param bitfield
+	 *            the bitfield to set
 	 */
-	private void setBitField(final byte[] bitField) {
-		this.bitField = bitField;
+	private void setBitfield(final byte[] bitfield) {
+		this.bitfield = bitfield;
 	}
 
 	/**
-	 * @return the bitField
+	 * Returns the current local bitfield.
+	 * 
+	 * @return the bitfield
 	 */
-	private byte[] getBitField() {
-		return this.bitField;
+	private byte[] getBitfield() {
+		return this.bitfield;
 	}
 
-	private String getBitFieldString() {
+	/**
+	 * Returns the bitfield as 0s and 1s.
+	 * 
+	 * @return the string representation of the bitfield
+	 */
+	private String getBitfieldString() {
 		final StringBuilder builder = new StringBuilder();
-		if (this.bitField != null) {
-			builder.append("bitField=");
-			for (final byte b : this.bitField) {
+		if (this.bitfield != null) {
+			builder.append("bitfield=");
+			for (final byte b : this.bitfield) {
 				// Add 0x100 then skip char(0) to left-pad bits with zeros
 				builder.append(Integer.toBinaryString(0x100 + b).substring(1));
 			}
