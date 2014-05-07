@@ -178,7 +178,7 @@ public class RUBTClient extends Thread {
 	 * 
 	 * @param downloaded
 	 */
-	public synchronized void addDownloaded(int downloaded) {
+	synchronized void addDownloaded(int downloaded) {
 		RUBTClient.LOGGER.info("Amount downloaded = " + this.downloaded);
 		this.downloaded += downloaded;
 	}

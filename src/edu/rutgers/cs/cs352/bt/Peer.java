@@ -37,7 +37,7 @@ public class Peer extends Thread {
 	/**
 	 * @return the peer ID
 	 */
-	public byte[] getPeerId() {
+	byte[] getPeerId() {
 		return this.peerId;
 	}
 
@@ -46,7 +46,7 @@ public class Peer extends Thread {
 	/**
 	 * @return the peer IP
 	 */
-	public String getIp() {
+	String getIp() {
 		return this.ip;
 	}
 
@@ -61,7 +61,7 @@ public class Peer extends Thread {
 	/**
 	 * The block size that will be requested, 16K.
 	 */
-	public static final int BLOCK_LENGTH = 16384; // = 16Kb
+	private static final int BLOCK_LENGTH = 16384; // = 16Kb
 	// We should be requesting 16K blocks, while pieces are 32 blocks
 
 	private byte[] piece;
@@ -73,7 +73,7 @@ public class Peer extends Thread {
 	/**
 	 * @return the bitField
 	 */
-	public synchronized byte[] getBitField() {
+	synchronized byte[] getBitField() {
 		return this.bitField;
 	}
 
@@ -81,7 +81,7 @@ public class Peer extends Thread {
 	 * @param bit
 	 *            the bit to set
 	 */
-	public void setBitFieldBit(final int bit) {
+	void setBitFieldBit(final int bit) {
 		byte[] tempBitField = this.getBitField();
 		tempBitField = Utility.setBit(tempBitField, bit);
 		this.setBitField(tempBitField);
@@ -92,11 +92,11 @@ public class Peer extends Thread {
 	 * @param bitField
 	 *            the bitField to set
 	 */
-	public synchronized void setBitField(final byte[] bitField) {
+	synchronized void setBitField(final byte[] bitField) {
 		this.bitField = bitField;
 	}
 
-	public void initializeBitField(final int totalPieces) {
+	void initializeBitField(final int totalPieces) {
 		final int bytes = (int) Math.ceil((double) totalPieces / 8);
 		final byte[] tempBitField = new byte[bytes];
 
@@ -141,7 +141,7 @@ public class Peer extends Thread {
 	 * @return {@code true} if the LOCAL CLIENT is interested in the REMOTE
 	 *         PEER's pieces
 	 */
-	public boolean amInterested() {
+	boolean amInterested() {
 		return this.localInterested;
 	}
 
@@ -150,7 +150,7 @@ public class Peer extends Thread {
 	 * 
 	 * @return {@code true} if the LOCAL CLIENT is choked by the REMOTE PEER.
 	 */
-	public boolean amChoked() {
+	boolean amChoked() {
 		return this.localChoked;
 	}
 
@@ -160,7 +160,7 @@ public class Peer extends Thread {
 	 * @return {@code true} if the REMOTE CLIENT is interested in the LOCAL
 	 *         PEER's pieces
 	 */
-	public boolean remoteInterested() {
+	boolean remoteInterested() {
 		return this.localInterested;
 	}
 
@@ -169,7 +169,7 @@ public class Peer extends Thread {
 	 * 
 	 * @return {@code true} if the REMOTE CLIENT is choked by the LOCAL PEER.
 	 */
-	public boolean remoteChoked() {
+	boolean remoteChoked() {
 		return this.localChoked;
 	}
 
@@ -177,7 +177,7 @@ public class Peer extends Thread {
 	 * @param localInterested
 	 *            the localInterested to set
 	 */
-	public synchronized void setLocalInterested(final boolean localInterested) {
+	synchronized void setLocalInterested(final boolean localInterested) {
 		this.localInterested = localInterested;
 	}
 
@@ -185,7 +185,7 @@ public class Peer extends Thread {
 	 * @param remoteInterested
 	 *            the remoteInterested to set
 	 */
-	public synchronized void setRemoteInterested(final boolean remoteInterested) {
+	synchronized void setRemoteInterested(final boolean remoteInterested) {
 		this.remoteInterested = remoteInterested;
 	}
 
@@ -193,7 +193,7 @@ public class Peer extends Thread {
 	 * @param localChoked
 	 *            the localChoked to set
 	 */
-	public synchronized void setLocalChoked(final boolean localChoked) {
+	synchronized void setLocalChoked(final boolean localChoked) {
 		this.localChoked = localChoked;
 	}
 
@@ -201,7 +201,7 @@ public class Peer extends Thread {
 	 * @param remoteChoked
 	 *            the remoteChoked to set
 	 */
-	public synchronized void setRemoteChoked(final boolean remoteChoked) {
+	synchronized void setRemoteChoked(final boolean remoteChoked) {
 		this.remoteChoked = remoteChoked;
 	}
 
@@ -218,7 +218,7 @@ public class Peer extends Thread {
 	 * @throws IOException
 	 *             if an Exception is thrown by the underlying write operation.
 	 */
-	public synchronized void sendMessage(final Message msg) throws IOException {
+	synchronized void sendMessage(final Message msg) throws IOException {
 		if (this.out == null) {
 			throw new IOException(
 					"Output stream is null, cannot write message to " + this);
@@ -314,7 +314,7 @@ public class Peer extends Thread {
 	 * 
 	 * @throws IOException
 	 */
-	public void connect() throws IOException {
+	void connect() throws IOException {
 		// Create socket
 		this.socket = null;
 		try {
@@ -341,7 +341,7 @@ public class Peer extends Thread {
 	/**
 	 * Disconnects this peer.
 	 */
-	public void disconnect() {
+	void disconnect() {
 		// Disconnect the socket, close data streams, catch all exceptions
 		try {
 			this.keepRunning = false;
@@ -543,7 +543,7 @@ public class Peer extends Thread {
 		return true;
 	}
 
-	public void setTasks(final LinkedBlockingQueue<MessageTask> tasks) {
+	void setTasks(final LinkedBlockingQueue<MessageTask> tasks) {
 		this.tasks = tasks;
 	}
 
@@ -551,7 +551,7 @@ public class Peer extends Thread {
 	 * @param client
 	 *            the client to set
 	 */
-	public void setClient(RUBTClient client) {
+	void setClient(RUBTClient client) {
 		this.client = client;
 	}
 

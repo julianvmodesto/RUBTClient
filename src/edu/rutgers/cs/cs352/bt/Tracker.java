@@ -127,7 +127,7 @@ public class Tracker {
 	 * 
 	 * @return the port
 	 */
-	public int getPort() {
+	int getPort() {
 		return this.port;
 	}
 
@@ -137,7 +137,7 @@ public class Tracker {
 	 * @param port
 	 *            the port to set
 	 */
-	public void setPort(final int port) {
+	void setPort(final int port) {
 		this.port = port;
 	}
 
@@ -178,7 +178,7 @@ public class Tracker {
 	 * @throws BencodingException
 	 * @throws IOException
 	 */
-	public List<Peer> announce(final int downloaded, final int uploaded,
+	List<Peer> announce(final int downloaded, final int uploaded,
 			final int left, final String event) throws BencodingException,
 			IOException {
 		// Build HTTP GET request from the announce URL from the metainfo
@@ -345,7 +345,7 @@ public class Tracker {
 	 * 
 	 * @return the latest returned "interval" value
 	 */
-	public int getInterval() {
+	int getInterval() {
 		return this.interval;
 	}
 
