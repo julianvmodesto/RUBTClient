@@ -19,6 +19,7 @@ import edu.rutgers.cs.cs352.bt.util.Utility;
 
 /**
  * @author Robert Moore
+ * @author Julian Modesto
  * 
  */
 public class Peer extends Thread {
@@ -53,6 +54,7 @@ public class Peer extends Thread {
 	private Socket socket;
 
 	private LinkedBlockingQueue<MessageTask> tasks;
+	private RUBTClient client;
 
 	private byte[] bitField;
 
@@ -278,9 +280,14 @@ public class Peer extends Thread {
 					try {
 						final Message msg = Message.read(this.in);
 						Peer.LOGGER.info("Decoded " + msg);
+						// Handle the message received
 						if (msg.getId() == Message.ID_PIECE) {
+							// Take the Piece Message and build blocks into a
+							// piece
 							this.buildPiece(msg);
 						} else {
+							// Queue Message as a MessageTask with the local
+							// client
 							Peer.LOGGER.info("Queued message: " + msg);
 							this.tasks.put(new MessageTask(this, msg));
 						}
@@ -484,7 +491,7 @@ public class Peer extends Thread {
 		// Add peer id, which should match the infohash
 		System.arraycopy(this.clientId, 0, handshake, 48, this.clientId.length);
 
-		Peer.LOGGER.log(Level.CONFIG, "Generated handshake for " + this);
+		Peer.LOGGER.info("Generated handshake for " + this);
 
 		return handshake;
 	}
@@ -540,6 +547,13 @@ public class Peer extends Thread {
 		this.tasks = tasks;
 	}
 
+	/**
+	 * @param client the client to set
+	 */
+	public void setClient(RUBTClient client) {
+		this.client = client;
+	}
+
 	public void requestPiece(final int pieceIndex, final int pieceLength)
 			throws IOException {
 		this.pieceIndex = pieceIndex;
@@ -561,10 +575,26 @@ public class Peer extends Thread {
 		this.sendMessage(requestMsg);
 	}
 
+	/**
+	 * Builds a file piece from blocks.
+	 * 
+	 * @param msg
+	 *            the Piece Message containing file contents
+	 * @throws InterruptedException
+	 * @throws IOException
+	 */
 	private void buildPiece(final Message msg) throws InterruptedException,
 			IOException {
+		// Make sure this is a Piece Message
 		if (msg.getId() == Message.ID_PIECE) {
 			final PieceMessage pieceMsg = (PieceMessage) msg;
+			
+			// Add to client downloaded
+			this.client.addDownloaded(pieceMsg.getBlock().length);
+			
+			// Confirm that a Piece Message was received for the piece currently
+			// being built by this Peer. The block offset should indicate that
+			// the expected block is being worked on, as well.
 			if (pieceMsg.getPieceIndex() != this.pieceIndex) {
 				Peer.LOGGER
 						.warning("Incorrect piece received from " + pieceMsg);
@@ -572,6 +602,7 @@ public class Peer extends Thread {
 				Peer.LOGGER.warning("Incorrect block offset received from "
 						+ pieceMsg);
 			} else {
+				// The Peer received a good Piece Message
 				if (pieceMsg.getBlock().length == this.lastBlockLength) {
 					// Write the last block of piece
 					System.arraycopy(pieceMsg.getBlock(), 0, this.piece,
@@ -589,6 +620,7 @@ public class Peer extends Thread {
 							this.pieceIndex, 0, this.piece);
 					this.tasks.put(new MessageTask(this, returnMsg));
 				} else {
+					// Temporarily store the block
 					System.arraycopy(pieceMsg.getBlock(), 0, this.piece,
 							this.blockOffset, Peer.BLOCK_LENGTH);
 					RequestMessage requestMsg;
@@ -599,6 +631,7 @@ public class Peer extends Thread {
 						requestMsg = new RequestMessage(this.pieceIndex,
 								this.blockOffset, this.lastBlockLength);
 					} else {
+						// Request another piece
 						this.blockOffset = this.blockOffset + Peer.BLOCK_LENGTH;
 						requestMsg = new RequestMessage(this.pieceIndex,
 								this.blockOffset, Peer.BLOCK_LENGTH);
