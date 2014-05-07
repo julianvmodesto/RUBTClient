@@ -41,7 +41,7 @@ public class Message {
 	/**
 	 * Message id value for Bit-Field messages.
 	 */
-	public static final byte ID_BIT_FIELD = 5;
+	public static final byte ID_BITFIELD = 5;
 	/**
 	 * Message id value for Request messages.
 	 */
@@ -80,7 +80,7 @@ public class Message {
 			Message.ID_UNINTERESTED);
 
 	public static final String[] ID_NAMES = { "Choke", "Unchoke", "Interested",
-			"Uninterested", "Have", "BitField", "Request", "Piece", "Cancel",
+			"Uninterested", "Have", "Bitfield", "Request", "Piece", "Cancel",
 			"KeepAlive" };
 
 	private final int length;
@@ -139,10 +139,10 @@ public class Message {
 		case ID_HAVE:
 			pieceIndex = din.readInt();
 			return new HaveMessage(pieceIndex);
-		case ID_BIT_FIELD:
-			final byte[] bitField = new byte[length - 1];
-			din.readFully(bitField);
-			return new BitFieldMessage(length, bitField);
+		case ID_BITFIELD:
+			final byte[] bitfield = new byte[length - 1];
+			din.readFully(bitfield);
+			return new BitfieldMessage(length, bitfield);
 		case ID_REQUEST:
 			pieceIndex = din.readInt();
 			blockOffset = din.readInt();
@@ -234,21 +234,21 @@ public class Message {
 	 * A bit field message.
 	 * 
 	 */
-	public static class BitFieldMessage extends Message {
-		private final byte[] bitField;
+	public static class BitfieldMessage extends Message {
+		private final byte[] bitfield;
 
-		public BitFieldMessage(final int length, final byte[] bitField) {
-			super(1 + length, Message.ID_BIT_FIELD);
-			this.bitField = bitField;
+		public BitfieldMessage(final int length, final byte[] bitfield) {
+			super(1 + length, Message.ID_BITFIELD);
+			this.bitfield = bitfield;
 		}
 
-		public byte[] getBitField() {
-			return this.bitField;
+		public byte[] getBitfield() {
+			return this.bitfield;
 		}
 
 		@Override
 		public void writePayload(final DataOutputStream dos) throws IOException {
-			dos.write(this.bitField);
+			dos.write(this.bitfield);
 		}
 
 		/*
@@ -259,10 +259,10 @@ public class Message {
 		@Override
 		public String toString() {
 			final StringBuilder builder = new StringBuilder();
-			builder.append("BitFieldMessage [");
-			if (this.bitField != null) {
-				builder.append("bitField=");
-				for (final byte b : this.bitField) {
+			builder.append("BitfieldMessage [");
+			if (this.bitfield != null) {
+				builder.append("bitfield=");
+				for (final byte b : this.bitfield) {
 					// Add 0x100 then skip char(0) to left-pad bits with zeros
 					builder.append(Integer.toBinaryString(0x100 + b).substring(
 							1));

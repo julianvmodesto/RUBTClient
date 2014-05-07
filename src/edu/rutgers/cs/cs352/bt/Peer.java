@@ -56,7 +56,7 @@ public class Peer extends Thread {
 	private LinkedBlockingQueue<MessageTask> tasks;
 	private RUBTClient client;
 
-	private byte[] bitField;
+	private byte[] bitfield;
 
 	/**
 	 * The block size that will be requested, 16K.
@@ -71,36 +71,36 @@ public class Peer extends Thread {
 	private int lastBlockLength;
 
 	/**
-	 * @return the bitField
+	 * @return the bitfield
 	 */
-	synchronized byte[] getBitField() {
-		return this.bitField;
+	synchronized byte[] getBitfield() {
+		return this.bitfield;
 	}
 
 	/**
 	 * @param bit
 	 *            the bit to set
 	 */
-	void setBitFieldBit(final int bit) {
-		byte[] tempBitField = this.getBitField();
-		tempBitField = Utility.setBit(tempBitField, bit);
-		this.setBitField(tempBitField);
+	void setBitfieldBit(final int bit) {
+		byte[] tempBitfield = this.getBitfield();
+		tempBitfield = Utility.setBit(tempBitfield, bit);
+		this.setBitfield(tempBitfield);
 	}
 
 	/**
 	 * 
-	 * @param bitField
-	 *            the bitField to set
+	 * @param bitfield
+	 *            the bitfield to set
 	 */
-	synchronized void setBitField(final byte[] bitField) {
-		this.bitField = bitField;
+	synchronized void setBitfield(final byte[] bitfield) {
+		this.bitfield = bitfield;
 	}
 
-	void initializeBitField(final int totalPieces) {
+	void initializeBitfield(final int totalPieces) {
 		final int bytes = (int) Math.ceil((double) totalPieces / 8);
-		final byte[] tempBitField = new byte[bytes];
+		final byte[] tempBitfield = new byte[bytes];
 
-		this.setBitField(tempBitField);
+		this.setBitfield(tempBitfield);
 	}
 
 	public Peer(final byte[] peerId, final String ip, final Integer port,
