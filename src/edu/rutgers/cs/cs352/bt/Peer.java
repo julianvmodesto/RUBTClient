@@ -272,9 +272,10 @@ public class Peer extends Thread {
 
 			// Validate handshake
 			if (!this.validateHandshake(peerHandshake)) {
-				Peer.LOGGER.log(Level.WARNING, "Handshake is incorrect.");
+				Peer.LOGGER.warning("Handshake is incorrect.");
 				this.disconnect();
 			} else {
+				this.sendMessage(new Message.BitfieldMessage(this.client.getBitfield().length, this.client.getBitfield()));
 				while (this.keepRunning) {
 					// read message from socket
 					try {

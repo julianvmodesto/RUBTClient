@@ -767,7 +767,7 @@ public class RUBTClient extends Thread {
 	 * 
 	 * @return the bitfield
 	 */
-	private byte[] getBitfield() {
+	byte[] getBitfield() {
 		return this.bitfield;
 	}
 
