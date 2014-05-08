@@ -417,8 +417,7 @@ public class RUBTClient extends Thread {
 					peer.setBitfield(bitfieldMsg.getBitfield());
 
 					// Inspect bitfield
-					peer.setLocalInterested(this.amInterested(peer
-							.getBitfield()));
+					peer.setLocalInterested(this.amInterested(peer));
 					if (!peer.amChoked() && peer.amInterested()) {
 						peer.sendMessage(Message.INTERESTED);
 					} else if (peer.amInterested()) {
@@ -435,8 +434,7 @@ public class RUBTClient extends Thread {
 					}
 					peer.setBitfieldBit(haveMsg.getPieceIndex());
 
-					peer.setLocalInterested(this.amInterested(peer
-							.getBitfield()));
+					peer.setLocalInterested(this.amInterested(peer));
 					if (!peer.amChoked() && peer.amInterested()) {
 						peer.sendMessage(Message.INTERESTED);
 						peer.setLocalInterested(true);
@@ -467,7 +465,7 @@ public class RUBTClient extends Thread {
 						this.setBitfieldBit(pieceMsg.getPieceIndex());
 
 						// Recalculate amount left to download
-						this.left += -pieceMsg.getBlock().length;
+						this.left = this.left - pieceMsg.getBlock().length;
 						RUBTClient.LOGGER.info("Amount left = " + this.left);
 
 						// Notify peers that the piece is complete
@@ -554,21 +552,22 @@ public class RUBTClient extends Thread {
 		for (pieceIndex = 0; pieceIndex < this.totalPieces ; pieceIndex++) {
 			if (!Utility.isSetBit(this.bitfield, pieceIndex)
 					&& Utility.isSetBit(peerBitfield, pieceIndex)) {
+				this.setBitfieldBit(pieceIndex);
+
+				int requestedPieceLength = 0;
+				// Check if requesting last piece
+				if (pieceIndex == (this.totalPieces - 1)) {
+					// Last piece is irregularly-sized
+					requestedPieceLength = this.fileLength % this.pieceLength;
+				} else {
+					requestedPieceLength = this.pieceLength;
+				}
+
+				peer.requestPiece(pieceIndex, requestedPieceLength);				
+				
 				break;
 			}
 		}
-		this.setBitfieldBit(pieceIndex);
-
-		int requestedPieceLength = 0;
-		// Check if requesting last piece
-		if (pieceIndex == (this.totalPieces - 1)) {
-			// Last piece is irregularly-sized
-			requestedPieceLength = this.fileLength % this.pieceLength;
-		} else {
-			requestedPieceLength = this.pieceLength;
-		}
-
-		peer.requestPiece(pieceIndex, requestedPieceLength);
 	}
 
 	/**
@@ -632,21 +631,21 @@ public class RUBTClient extends Thread {
 	 * @param peerBitfield
 	 * @return
 	 */
-	private boolean amInterested(final byte[] peerBitfield) {
+	private boolean amInterested(Peer peer) {
 		if (this.left == 0) {
-			RUBTClient.LOGGER.info("Nothing left!");
+			RUBTClient.LOGGER.info("Nothing left, not interested in pieces from " + peer);
 			return false;
 		}
 
 		// Inspect bitfield
 		for (int pieceIndex = 0; pieceIndex < this.totalPieces; pieceIndex++) {
 			if (!Utility.isSetBit(this.bitfield, pieceIndex)
-					&& Utility.isSetBit(peerBitfield, pieceIndex)) {
-				RUBTClient.LOGGER.info("Still interested!");
+					&& Utility.isSetBit(peer.getBitfield(), pieceIndex)) {
+				RUBTClient.LOGGER.info("Still interested in pieces from " + peer);
 				return true;
 			}
 		}
-		RUBTClient.LOGGER.info("Not interested!");
+		RUBTClient.LOGGER.info("Not interested in pieces from " + peer);
 		return false;
 	}
 
@@ -667,7 +666,7 @@ public class RUBTClient extends Thread {
 	private boolean verifyPiece(final int pieceIndex, final byte[] block)
 			throws IOException {
 
-		final byte[] piece = new byte[this.pieceLength];
+		final byte[] piece = new byte[block.length];
 		System.arraycopy(block, 0, piece, 0, block.length);
 
 		byte[] hash = null;
@@ -680,12 +679,11 @@ public class RUBTClient extends Thread {
 			// Won't happen!
 		}
 		
-
 		if (Arrays.equals(this.tInfo.piece_hashes[pieceIndex].array(), hash)) {
-			RUBTClient.LOGGER.info("Piece verified.");
+			RUBTClient.LOGGER.info("Piece [pieceIndex=" + pieceIndex + "] verified.");
 			return true;
 		}
-		RUBTClient.LOGGER.log(Level.WARNING, "Piece does not match.");
+		RUBTClient.LOGGER.warning("Piece [pieceIndex=" + pieceIndex + "] doesn't match.");
 		return false;
 	}
 
@@ -723,8 +721,9 @@ public class RUBTClient extends Thread {
 			this.outFile.read(temp);
 			if (this.verifyPiece(pieceIndex, temp)) {
 				this.setBitfieldBit(pieceIndex);
+				this.left = this.left - temp.length;
 			} else {
-				this.left += temp.length;
+				this.resetBitfieldBit(pieceIndex);
 			}
 		}
 	}
