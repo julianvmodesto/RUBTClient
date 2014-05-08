@@ -19,59 +19,122 @@ import edu.rutgers.cs.cs352.bt.Message.RequestMessage;
 import edu.rutgers.cs.cs352.bt.util.Utility;
 
 /**
+ * The peer class manages interfacing with a single peer, including connecting
+ * and disconnecting, and messages between the peer and the client.
+ * 
  * @author Robert Moore
  * @author Julian Modesto
  * 
  */
 public class Peer extends Thread {
 
+	/**
+	 * The logger for this peer.
+	 */
 	private final static Logger LOGGER = Logger.getLogger(Peer.class.getName());
 
+	/**
+	 * The bytes for the "BitTorrent protocol" in the handshake between peer and
+	 * client.
+	 */
 	private static final byte[] BYTES_PROTOCOL = { 'B', 'i', 't', 'T', 'o',
 			'r', 'r', 'e', 'n', 't', ' ', 'p', 'r', 'o', 't', 'o', 'c', 'o',
 			'l' };
 
+	/**
+	 * This peer's ID that identifies it to the client and within the torrent.
+	 */
 	private final byte[] peerId;
+
+	/**
+	 * The infohash that identifies the torrent.
+	 */
 	private final byte[] infoHash;
+
+	/**
+	 * The local client's peer ID.
+	 */
 	private final byte[] clientId;
 
 	/**
+	 * Retrieves the peer ID that identifies this peer.
+	 * 
 	 * @return the peer ID
 	 */
 	byte[] getPeerId() {
 		return this.peerId;
 	}
 
+	/**
+	 * The peer's IP address.
+	 */
 	private final String ip;
 
 	/**
+	 * Gives the IP address the peer is located at.
+	 * 
 	 * @return the peer IP
 	 */
 	String getIp() {
 		return this.ip;
 	}
 
+	/**
+	 * The port that the peer is listening on.
+	 */
 	private final int port;
+
+	/**
+	 * The socket for this peer to the client.
+	 */
 	private Socket socket;
 
+	/**
+	 * Points to the queue of messages for the client to consume.
+	 */
 	private LinkedBlockingQueue<MessageTask> tasks;
+	/**
+	 * The local client that this peer is connected to.
+	 */
 	private RUBTClient client;
 
+	/**
+	 * This peer's bitfield.
+	 */
 	private byte[] bitfield;
 
 	/**
 	 * The block size that will be requested, 16K.
 	 */
 	private static final int BLOCK_LENGTH = 16384; // = 16Kb
-	// We should be requesting 16K blocks, while pieces are 32 blocks
 
+	/**
+	 * The byte array for the piece that this peer is currently building.
+	 */
 	private byte[] piece;
+	/**
+	 * The length of the piece that this peer is working on.
+	 */
 	private int pieceLength;
+	/**
+	 * The piece index of the piece within the file that is of interest to this
+	 * peer.
+	 */
 	private int pieceIndex;
+	/**
+	 * The current block offset at which the peer will request the next block
+	 * for.
+	 */
 	private int blockOffset;
+	/**
+	 * The length of the final block in this piece, as determined by the block
+	 * length and piece length.
+	 */
 	private int lastBlockLength;
 
 	/**
+	 * Returns the current bitfield for this peer.
+	 * 
 	 * @return the bitfield
 	 */
 	synchronized byte[] getBitfield() {
@@ -79,6 +142,8 @@ public class Peer extends Thread {
 	}
 
 	/**
+	 * Sets a bit according to its position in the peer's bitfield.
+	 * 
 	 * @param bit
 	 *            the bit to set
 	 */
@@ -89,6 +154,7 @@ public class Peer extends Thread {
 	}
 
 	/**
+	 * Sets the passed byte array as the peer's updated bitfield.
 	 * 
 	 * @param bitfield
 	 *            the bitfield to set
@@ -97,6 +163,13 @@ public class Peer extends Thread {
 		this.bitfield = bitfield;
 	}
 
+	/**
+	 * Allocates the bitfield according to the number of total pieces for the
+	 * file.
+	 * 
+	 * @param totalPieces
+	 *            the number of pieces as specified by the torrent
+	 */
 	void initializeBitfield(final int totalPieces) {
 		final int bytes = (int) Math.ceil((double) totalPieces / 8);
 		final byte[] tempBitfield = new byte[bytes];
@@ -104,6 +177,20 @@ public class Peer extends Thread {
 		this.setBitfield(tempBitfield);
 	}
 
+	/**
+	 * Creates a new Peer object.
+	 * 
+	 * @param peerId
+	 *            this peer's ID
+	 * @param ip
+	 *            the IP that the peer is addressed at
+	 * @param port
+	 *            the port that the peer is listening on
+	 * @param infoHash
+	 *            the infohash identifying the tracker
+	 * @param clientId
+	 *            the local client's peer ID
+	 */
 	public Peer(final byte[] peerId, final String ip, final Integer port,
 			final byte[] infoHash, final byte[] clientId) {
 		this.peerId = peerId;
@@ -133,7 +220,13 @@ public class Peer extends Thread {
 	 */
 	private boolean remoteChoked = true;
 
+	/**
+	 * The input stream for the socket to the peer.
+	 */
 	private DataInputStream in = null;
+	/**
+	 * The output stream for the socket to the peer.
+	 */
 	private DataOutputStream out = null;
 
 	/**
@@ -207,8 +300,17 @@ public class Peer extends Thread {
 	}
 
 	// Set up timer
+	/**
+	 * The timeout length at which a keep alive message should be sent.
+	 */
 	private static final long KEEP_ALIVE_TIMEOUT = 120000;
+	/**
+	 * The timer for sending keep alives to the peer.
+	 */
 	private final Timer keepAliveTimer = new Timer();
+	/**
+	 * The last time in milliseconds that a message was sent to the peer.
+	 */
 	private long lastMessageTime = System.currentTimeMillis();
 
 	/**
@@ -276,7 +378,8 @@ public class Peer extends Thread {
 				Peer.LOGGER.warning("Handshake is incorrect.");
 				this.disconnect();
 			} else {
-				this.sendMessage(new Message.BitfieldMessage(this.client.getBitfield().length, this.client.getBitfield()));
+				this.sendMessage(new Message.BitfieldMessage(this.client
+						.getBitfield().length, this.client.getBitfield()));
 				while (this.keepRunning) {
 					// read message from socket
 					try {
@@ -293,7 +396,7 @@ public class Peer extends Thread {
 							Peer.LOGGER.info("Queued message: " + msg);
 							this.tasks.put(new MessageTask(this, msg));
 						}
-					} catch(final EOFException eofe) {
+					} catch (final EOFException eofe) {
 						// Disconnect from peer
 						this.disconnect();
 					} catch (final IOException ioe) {
@@ -315,7 +418,7 @@ public class Peer extends Thread {
 	}
 
 	/**
-	 * Connects this peer.
+	 * Connects this peer to the client through the socket.
 	 * 
 	 * @throws IOException
 	 */
@@ -548,11 +651,19 @@ public class Peer extends Thread {
 		return true;
 	}
 
+	/**
+	 * Set the task queue that the client consumes.
+	 * 
+	 * @param tasks
+	 *            the queue of MessageTasks for the peer to add to
+	 */
 	void setTasks(final LinkedBlockingQueue<MessageTask> tasks) {
 		this.tasks = tasks;
 	}
 
 	/**
+	 * Sets the client that's connected to this peer
+	 * 
 	 * @param client
 	 *            the client to set
 	 */
@@ -560,6 +671,16 @@ public class Peer extends Thread {
 		this.client = client;
 	}
 
+	/**
+	 * This method is called from the client to specify which piece the Peer
+	 * object should begin building.
+	 * 
+	 * @param pieceIndex
+	 *            the index of the piece to build
+	 * @param pieceLength
+	 *            the length of the entire piece
+	 * @throws IOException
+	 */
 	public void requestPiece(final int pieceIndex, final int pieceLength)
 			throws IOException {
 		this.pieceIndex = pieceIndex;
@@ -622,7 +743,7 @@ public class Peer extends Thread {
 					System.arraycopy(pieceMsg.getBlock(), 0, this.piece,
 							this.blockOffset, Peer.BLOCK_LENGTH);
 					RequestMessage requestMsg;
-					
+
 					// Request another piece
 					this.blockOffset = this.blockOffset + Peer.BLOCK_LENGTH;
 					requestMsg = new RequestMessage(this.pieceIndex,
