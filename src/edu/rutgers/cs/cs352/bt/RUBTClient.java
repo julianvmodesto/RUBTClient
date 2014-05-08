@@ -27,12 +27,15 @@ import edu.rutgers.cs.cs352.bt.exceptions.BencodingException;
 import edu.rutgers.cs.cs352.bt.util.Utility;
 
 /**
- * Main class for RUBTClient. After starting, spends its time listening on the
- * incoming message queue in order to decide what to do.
+ * Main class for RUBTClient. The client connects to peers in the torrent and
+ * the peers produce messages which may be handled by the client. After
+ * starting, the client spends its time listening on the incoming message queue
+ * in order to decide what to do.
  * 
  * @author Robert Moore
  * @author Julian Modesto
- * @author Gaur
+ * @author Gaurav Kumar
+ * @author Jeffrey Rocha
  */
 
 public class RUBTClient extends Thread {
@@ -289,9 +292,15 @@ public class RUBTClient extends Thread {
 		RUBTClient.LOGGER.info("Total pieces: " + this.totalPieces);
 		RUBTClient.LOGGER.info("File length: " + this.fileLength);
 		RUBTClient.LOGGER.info("Piece length: " + this.pieceLength);
-		RUBTClient.LOGGER.info("Last piece length: " + (this.fileLength % this.pieceLength));
+		RUBTClient.LOGGER.info("Last piece length: "
+				+ (this.fileLength % this.pieceLength));
 	}
 
+	/**
+	 * Starts the interfacing with the tracker, connects to peers, and handles
+	 * messages to and from these peers while continuing to interface with the
+	 * tracker and connect to peers.
+	 */
 	@Override
 	public void run() {
 
@@ -302,10 +311,10 @@ public class RUBTClient extends Thread {
 			if (this.outFile.length() != this.fileLength) {
 				this.outFile.setLength(this.fileLength);
 			}
-			
+
 			// Set client bitfield
 			this.setBitfield();
-			
+
 			RUBTClient.LOGGER.info("Starting bitfield: "
 					+ this.getBitfieldString());
 
@@ -549,7 +558,7 @@ public class RUBTClient extends Thread {
 		// rangeMin = pieceIndex
 		// rangeMax = totalPieces
 		int pieceIndex;
-		for (pieceIndex = 0; pieceIndex < this.totalPieces ; pieceIndex++) {
+		for (pieceIndex = 0; pieceIndex < this.totalPieces; pieceIndex++) {
 			if (!Utility.isSetBit(this.bitfield, pieceIndex)
 					&& Utility.isSetBit(peerBitfield, pieceIndex)) {
 				this.setBitfieldBit(pieceIndex);
@@ -563,8 +572,8 @@ public class RUBTClient extends Thread {
 					requestedPieceLength = this.pieceLength;
 				}
 
-				peer.requestPiece(pieceIndex, requestedPieceLength);				
-				
+				peer.requestPiece(pieceIndex, requestedPieceLength);
+
 				break;
 			}
 		}
@@ -633,7 +642,8 @@ public class RUBTClient extends Thread {
 	 */
 	private boolean amInterested(Peer peer) {
 		if (this.left == 0) {
-			RUBTClient.LOGGER.info("Nothing left, not interested in pieces from " + peer);
+			RUBTClient.LOGGER
+					.info("Nothing left, not interested in pieces from " + peer);
 			return false;
 		}
 
@@ -641,7 +651,8 @@ public class RUBTClient extends Thread {
 		for (int pieceIndex = 0; pieceIndex < this.totalPieces; pieceIndex++) {
 			if (!Utility.isSetBit(this.bitfield, pieceIndex)
 					&& Utility.isSetBit(peer.getBitfield(), pieceIndex)) {
-				RUBTClient.LOGGER.info("Still interested in pieces from " + peer);
+				RUBTClient.LOGGER.info("Still interested in pieces from "
+						+ peer);
 				return true;
 			}
 		}
@@ -678,15 +689,24 @@ public class RUBTClient extends Thread {
 		} catch (NoSuchAlgorithmException nsae) {
 			// Won't happen!
 		}
-		
+
 		if (Arrays.equals(this.tInfo.piece_hashes[pieceIndex].array(), hash)) {
-			RUBTClient.LOGGER.info("Piece [pieceIndex=" + pieceIndex + "] verified.");
+			RUBTClient.LOGGER.info("Piece [pieceIndex=" + pieceIndex
+					+ "] verified.");
 			return true;
 		}
-		RUBTClient.LOGGER.warning("Piece [pieceIndex=" + pieceIndex + "] doesn't match.");
+		RUBTClient.LOGGER.warning("Piece [pieceIndex=" + pieceIndex
+				+ "] doesn't match.");
 		return false;
 	}
 
+	/**
+	 * Sends a Have message to peers for the piece that the client has
+	 * completed.
+	 * 
+	 * @param pieceIndex
+	 *            the piece index for the complete piece
+	 */
 	private void notifyPeers(final int pieceIndex) {
 		for (Peer p : this.peers) {
 			try {
@@ -701,15 +721,16 @@ public class RUBTClient extends Thread {
 			}
 		}
 	}
-	
+
 	/**
 	 * Updates the bitfield according to the existing output file.
-	 * @throws IOException 
+	 * 
+	 * @throws IOException
 	 */
 	private void setBitfield() throws IOException {
 		final int bytes = (int) Math.ceil(this.totalPieces / 8.0);
 		this.bitfield = new byte[bytes];
-		
+
 		for (int pieceIndex = 0; pieceIndex < this.totalPieces; pieceIndex++) {
 			byte[] temp;
 			if (pieceIndex == this.totalPieces - 1) {
@@ -772,7 +793,7 @@ public class RUBTClient extends Thread {
 	}
 
 	/**
-	 * Returns the bitfield as 0s and 1s.
+	 * Returns the bitfield as a string as 0s and 1s.
 	 * 
 	 * @return the string representation of the bitfield
 	 */
