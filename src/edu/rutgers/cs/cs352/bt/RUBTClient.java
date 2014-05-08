@@ -678,21 +678,23 @@ public class RUBTClient extends Thread {
 		for (Popularity p : piecePopularity) {
 			if (Utility.isSetBit(peer.getBitfield(), p.getPieceIndex()) && !Utility.isSetBit(this.bitfield, p.getPieceIndex())) {
 				pieceIndex = p.getPieceIndex();
+				this.setBitfieldBit(pieceIndex);
+
+				int requestedPieceLength = 0;
+				// Check if requesting last piece
+				if (pieceIndex == (this.totalPieces - 1)) {
+					// Last piece is irregularly-sized
+					requestedPieceLength = this.fileLength % this.pieceLength;
+				} else {
+					requestedPieceLength = this.pieceLength;
+				}
+
+				peer.requestPiece(pieceIndex, requestedPieceLength);
+				break;
 			}
 		}
 		
-		this.setBitfieldBit(pieceIndex);
-
-		int requestedPieceLength = 0;
-		// Check if requesting last piece
-		if (pieceIndex == (this.totalPieces - 1)) {
-			// Last piece is irregularly-sized
-			requestedPieceLength = this.fileLength % this.pieceLength;
-		} else {
-			requestedPieceLength = this.pieceLength;
-		}
-
-		peer.requestPiece(pieceIndex, requestedPieceLength);
+		
 	}
 
 	/**
