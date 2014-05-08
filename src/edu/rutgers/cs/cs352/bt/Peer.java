@@ -397,8 +397,6 @@ public class Peer extends Thread {
 							this.tasks.put(new MessageTask(this, msg));
 						}
 					} catch (final EOFException eofe) {
-						// Disconnect from peer
-						this.disconnect();
 					} catch (final IOException ioe) {
 						// TODO Auto-generated catch block
 						ioe.printStackTrace();
@@ -734,6 +732,14 @@ public class Peer extends Thread {
 					// Write the last block of piece
 					System.arraycopy(pieceMsg.getBlock(), 0, this.piece,
 							this.blockOffset, this.lastBlockLength);
+					// Queue the full piece
+					final PieceMessage returnMsg = new PieceMessage(
+							this.pieceIndex, 0, this.piece);
+					this.tasks.put(new MessageTask(this, returnMsg));
+				} else if (((pieceMsg.getBlockOffset() + BLOCK_LENGTH + this.lastBlockLength) == this.pieceLength) && this.lastBlockLength == 0) {
+					// Write the last block of piece
+					System.arraycopy(pieceMsg.getBlock(), 0, this.piece,
+							this.blockOffset, BLOCK_LENGTH);
 					// Queue the full piece
 					final PieceMessage returnMsg = new PieceMessage(
 							this.pieceIndex, 0, this.piece);
