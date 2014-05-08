@@ -20,6 +20,9 @@ import edu.rutgers.cs.cs352.bt.util.Bencoder2;
 import edu.rutgers.cs.cs352.bt.util.Utility;
 
 /**
+ * The tracker class interfaces with the torrent tracker through announces and
+ * retrieves information about the torrent from the tracker response.
+ * 
  * @author Robert Moore
  * @author Gaurav Kumar
  * @author Julian Modesto
@@ -141,6 +144,9 @@ public class Tracker {
 		this.port = port;
 	}
 
+	/**
+	 * The default interval for which tracker announces should be performed at.
+	 */
 	private int interval = 60;
 
 	/**
@@ -164,7 +170,9 @@ public class Tracker {
 	}
 
 	/**
-	 * Perform a tracker announce with the provided parameters
+	 * Perform a tracker announce with the provided parameters and returns a
+	 * list of peers specified by the tracker. Information in the decoded
+	 * response from the tracker is updated within the local client object.
 	 * 
 	 * @param downloaded
 	 *            the number of bytes downloaded in this torrent
@@ -256,7 +264,7 @@ public class Tracker {
 			throw new BencodingException(
 					"A bencoding exception occurred when decoding tracker response.");
 		}
-		
+
 		// Set the interval
 		if (responseMap.containsKey(Tracker.KEY_INTERVAL)) {
 			this.interval = ((Integer) responseMap.get(Tracker.KEY_INTERVAL))
