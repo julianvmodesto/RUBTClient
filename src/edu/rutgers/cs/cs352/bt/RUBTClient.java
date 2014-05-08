@@ -168,6 +168,9 @@ public class RUBTClient extends Thread {
 	 * The amount of bytes required to download.
 	 */
 	private int left;
+	
+	private int maxPeers = 3;
+	private int peersUnchoked = 0;
 
 	/**
 	 * Retrieve the amount of bytes the client has downladed.
@@ -408,8 +411,15 @@ public class RUBTClient extends Thread {
 					// Update internal state
 					peer.setRemoteInterested(true);
 
-					peer.sendMessage(Message.UNCHOKE);
-					peer.setRemoteChoked(false);
+					if (this.peersUnchoked < this.maxPeers) {
+						this.peersUnchoked++;
+						peer.sendMessage(Message.UNCHOKE);
+						peer.setRemoteChoked(false);
+					} else {
+						peer.sendMessage(Message.CHOKE);
+						peer.setRemoteChoked(true);
+					}
+					
 					break;
 				case Message.ID_UNINTERESTED:
 					// Update internal state
