@@ -9,6 +9,7 @@ import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -448,19 +449,24 @@ public class RUBTClient extends Thread {
 					break;
 				case Message.ID_REQUEST:
 					final RequestMessage requestMsg = (RequestMessage) msg;
-					
+
 					// Check that we have the piece
-					if (Utility.isSetBit(this.bitfield, requestMsg.getPieceIndex())) {
+					if (Utility.isSetBit(this.bitfield,
+							requestMsg.getPieceIndex())) {
 						// Send the block
 						byte[] block = new byte[requestMsg.getBlockLength()];
-						System.arraycopy(Utility.getFileInBytes(this.outFile), requestMsg.getBlockOffset(), block, 0, requestMsg.getBlockLength());
-						final PieceMessage pieceMsg = new PieceMessage(requestMsg.getPieceIndex(), requestMsg.getBlockOffset(), block);
+						System.arraycopy(Utility.getFileInBytes(this.outFile),
+								requestMsg.getBlockOffset(), block, 0,
+								requestMsg.getBlockLength());
+						final PieceMessage pieceMsg = new PieceMessage(
+								requestMsg.getPieceIndex(),
+								requestMsg.getBlockOffset(), block);
 						peer.sendMessage(pieceMsg);
 					} else {
 						// Peer is misbehaving, choke
 						peer.sendMessage(Message.CHOKE);
 					}
-					
+
 					break;
 				case Message.ID_PIECE:
 					final PieceMessage pieceMsg = (PieceMessage) msg;
@@ -483,6 +489,10 @@ public class RUBTClient extends Thread {
 
 						// Recalculate amount left to download
 						this.left = this.left - pieceMsg.getBlock().length;
+						// For some reason left can go below 0...
+						if (this.left < 0) {
+							this.left = 0;
+						}
 						RUBTClient.LOGGER.info("Amount left = " + this.left);
 
 						// Notify peers that the piece is complete
@@ -551,40 +561,128 @@ public class RUBTClient extends Thread {
 		}
 	}
 
+	// /**
+	// * Determines which piece to request from the remote peer, and tells the
+	// * peer to "download" it. The peer and client bitfields are compared
+	// * sequentially.
+	// *
+	// * @param peer
+	// * @throws IOException
+	// */
+	// private void chooseAndRequestPiece(final Peer peer) throws IOException {
+	//
+	// // Inspect bitfields and choose piece
+	// final byte[] peerBitfield = peer.getBitfield();
+	// // Check pieces from rangeMin=0 to rangeMax=totalPieces
+	// // rangeMin = pieceIndex
+	// // rangeMax = totalPieces
+	// int pieceIndex;
+	// for (pieceIndex = 0; pieceIndex < this.totalPieces; pieceIndex++) {
+	// if (!Utility.isSetBit(this.bitfield, pieceIndex)
+	// && Utility.isSetBit(peerBitfield, pieceIndex)) {
+	// this.setBitfieldBit(pieceIndex);
+	//
+	// int requestedPieceLength = 0;
+	// // Check if requesting last piece
+	// if (pieceIndex == (this.totalPieces - 1)) {
+	// // Last piece is irregularly-sized
+	// requestedPieceLength = this.fileLength % this.pieceLength;
+	// } else {
+	// requestedPieceLength = this.pieceLength;
+	// }
+	//
+	// peer.requestPiece(pieceIndex, requestedPieceLength);
+	//
+	// break;
+	// }
+	// }
+	// }
+	
+	
+	private class Popularity implements Comparable<Popularity> {
+		private int pieceIndex;
+		private int popularity;
+		/**
+		 * @return the pieceIndex
+		 */
+		public int getPieceIndex() {
+			return pieceIndex;
+		}
+		/**
+		 * @return the popularity
+		 */
+		public int getPopularity() {
+			return popularity;
+		}
+		/**
+		 * Increments popularity.
+		 * @param popularity the popularity to set
+		 */
+		public void upPopularity() {
+			this.popularity += 1;
+		}
+		public Popularity(int pieceIndex) {
+			this.pieceIndex = pieceIndex;
+			this.popularity = 0;
+		}
+		
+		@Override
+		public int compareTo(Popularity o) {
+			return this.popularity - o.popularity;
+		}
+	}
+	
+	
 	/**
 	 * Determines which piece to request from the remote peer, and tells the
-	 * peer to "download" it.
+	 * peer to "download" it by selecting the rarest piece.
 	 * 
 	 * @param peer
 	 * @throws IOException
 	 */
-	private void chooseAndRequestPiece(final Peer peer) throws IOException {
-
-		// Inspect bitfields and choose piece
-		final byte[] peerBitfield = peer.getBitfield();
-		// Check pieces from rangeMin=0 to rangeMax=totalPieces
-		// rangeMin = pieceIndex
-		// rangeMax = totalPieces
-		int pieceIndex;
-		for (pieceIndex = 0; pieceIndex < this.totalPieces; pieceIndex++) {
-			if (!Utility.isSetBit(this.bitfield, pieceIndex)
-					&& Utility.isSetBit(peerBitfield, pieceIndex)) {
-				this.setBitfieldBit(pieceIndex);
-
-				int requestedPieceLength = 0;
-				// Check if requesting last piece
-				if (pieceIndex == (this.totalPieces - 1)) {
-					// Last piece is irregularly-sized
-					requestedPieceLength = this.fileLength % this.pieceLength;
-				} else {
-					requestedPieceLength = this.pieceLength;
+	private void chooseAndRequestPiece(Peer peer) throws IOException {
+		ArrayList<Popularity> piecePopularity = new ArrayList<Popularity>();
+		for (int i = 0; i < this.totalPieces; i++) {
+			piecePopularity.add(new Popularity(i));
+		}
+		
+		// Iterate over each peer
+		for (Peer p : this.peers) {
+			byte[] peerBitfield = p.getBitfield();
+			if (p.getBitfield() == null) {
+				continue;
+			}
+			// Increment piece popularity if the peer has that piece
+			for (int i = 0; i < peerBitfield.length; i++) {
+				if (Utility.isSetBit(peerBitfield, i)) {
+					// Increment the counter for this piece
+					piecePopularity.get(i).upPopularity();
 				}
+			}
 
-				peer.requestPiece(pieceIndex, requestedPieceLength);
+		}
+		
+		Collections.sort(piecePopularity);
 
-				break;
+		int pieceIndex = 0;
+		for (Popularity p : piecePopularity) {
+			if (Utility.isSetBit(peer.getBitfield(), p.getPieceIndex()) && !Utility.isSetBit(this.bitfield, p.getPieceIndex())) {
+				pieceIndex = p.getPieceIndex();
 			}
 		}
+		
+		this.setBitfieldBit(pieceIndex);
+
+		int requestedPieceLength = 0;
+		// Check if requesting last piece
+		if (pieceIndex == (this.totalPieces - 1)) {
+			// Last piece is irregularly-sized
+			requestedPieceLength = this.fileLength % this.pieceLength;
+		} else {
+			requestedPieceLength = this.pieceLength;
+		}
+
+		peer.requestPiece(pieceIndex, requestedPieceLength);
 	}
 
 	/**
