@@ -2,6 +2,7 @@ package edu.rutgers.cs.cs352.bt;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -292,6 +293,9 @@ public class Peer extends Thread {
 							Peer.LOGGER.info("Queued message: " + msg);
 							this.tasks.put(new MessageTask(this, msg));
 						}
+					} catch(final EOFException eofe) {
+						// Disconnect from peer
+						this.disconnect();
 					} catch (final IOException ioe) {
 						// TODO Auto-generated catch block
 						ioe.printStackTrace();

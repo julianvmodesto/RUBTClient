@@ -3,13 +3,19 @@ package edu.rutgers.cs.cs352.bt.util;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+/**
+ * A utility class primarily containing bit operation and manipulation methods.
+ * 
+ * @author Julian Modesto
+ * 
+ */
 public class Utility {
 
 	private final static char[] HEX_CHARS = { '0', '1', '2', '3', '4', '5',
 			'6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
 	/**
-	 * Converts a file into a byte array
+	 * Converts a file into a byte array representation.
 	 * 
 	 * @author Julian Modesto
 	 * @param file
@@ -25,11 +31,13 @@ public class Utility {
 	}
 
 	/**
+	 * Converts a byte array to a hex characters in a string.
 	 * 
 	 * @param byteArr
-	 * @return
+	 *            the byte array to convert
+	 * @return the string of hex characters that represents the byte array
 	 */
-	public static String bytesToHexStr(final byte[] byteArr) {
+	protected static String bytesToHexStr(final byte[] byteArr) {
 
 		final char[] charArr = new char[byteArr.length * 2];
 		for (int i = 0; i < byteArr.length; i++) {
@@ -44,9 +52,11 @@ public class Utility {
 	}
 
 	/**
+	 * Converts a byte array to an escaped URL for a BT tracker announce.
 	 * 
 	 * @param byteArr
-	 * @return
+	 *            the byte array to convert
+	 * @return the URL-converted byte array
 	 */
 	public static String bytesToURL(final byte[] byteArr) {
 
@@ -65,7 +75,7 @@ public class Utility {
 	}
 
 	/**
-	 * Sets the bit in the byte array.
+	 * Sets a bit in the byte array.
 	 * 
 	 * @param arr
 	 *            the byte array to change
@@ -88,7 +98,7 @@ public class Utility {
 	}
 
 	/**
-	 * Clears the bit in the byte array.
+	 * Clears a bit in the byte array.
 	 * 
 	 * @param arr
 	 *            the byte array to change
@@ -107,6 +117,15 @@ public class Utility {
 		return arr;
 	}
 
+	/**
+	 * Determines whether a particular bit is set in a byte array.
+	 * 
+	 * @param data
+	 *            the byte array to query
+	 * @param pos
+	 *            the position of the bit in the byte
+	 * @return true if the bit is 1, else 0
+	 */
 	public static boolean isSetBit(final byte[] data, final int pos) {
 		final int posByte = pos / 8;
 		final int posBit = 7 - (pos % 8);
