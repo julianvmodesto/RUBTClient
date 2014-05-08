@@ -23,6 +23,7 @@ import java.util.logging.Logger;
 import edu.rutgers.cs.cs352.bt.Message.BitfieldMessage;
 import edu.rutgers.cs.cs352.bt.Message.HaveMessage;
 import edu.rutgers.cs.cs352.bt.Message.PieceMessage;
+import edu.rutgers.cs.cs352.bt.Message.RequestMessage;
 import edu.rutgers.cs.cs352.bt.exceptions.BencodingException;
 import edu.rutgers.cs.cs352.bt.util.Utility;
 
@@ -406,14 +407,8 @@ public class RUBTClient extends Thread {
 					// Update internal state
 					peer.setRemoteInterested(true);
 
-					// Only send unchoke if not downloading
-					if (peer.amInterested()) {
-						peer.sendMessage(Message.CHOKE);
-						peer.setRemoteChoked(true);
-					} else {
-						peer.sendMessage(Message.UNCHOKE);
-						peer.setRemoteChoked(false);
-					}
+					peer.sendMessage(Message.UNCHOKE);
+					peer.setRemoteChoked(false);
 					break;
 				case Message.ID_UNINTERESTED:
 					// Update internal state
@@ -452,7 +447,20 @@ public class RUBTClient extends Thread {
 					}
 					break;
 				case Message.ID_REQUEST:
-					// TODO process request
+					final RequestMessage requestMsg = (RequestMessage) msg;
+					
+					// Check that we have the piece
+					if (Utility.isSetBit(this.bitfield, requestMsg.getPieceIndex())) {
+						// Send the block
+						byte[] block = new byte[requestMsg.getBlockLength()];
+						System.arraycopy(Utility.getFileInBytes(this.outFile), requestMsg.getBlockOffset(), block, 0, requestMsg.getBlockLength());
+						final PieceMessage pieceMsg = new PieceMessage(requestMsg.getPieceIndex(), requestMsg.getBlockOffset(), block);
+						peer.sendMessage(pieceMsg);
+					} else {
+						// Peer is misbehaving, choke
+						peer.sendMessage(Message.CHOKE);
+					}
+					
 					break;
 				case Message.ID_PIECE:
 					final PieceMessage pieceMsg = (PieceMessage) msg;
