@@ -565,7 +565,7 @@ public class Peer extends Thread {
 		this.blockOffset = 0;
 
 		RequestMessage requestMsg;
-		if ((this.blockOffset + this.lastBlockLength) >= this.pieceLength) {
+		if (this.lastBlockLength == this.pieceLength) {
 			// Request the last piece
 			requestMsg = new RequestMessage(this.pieceIndex, this.blockOffset,
 					this.lastBlockLength);
@@ -612,31 +612,27 @@ public class Peer extends Thread {
 					final PieceMessage returnMsg = new PieceMessage(
 							this.pieceIndex, 0, this.piece);
 					this.tasks.put(new MessageTask(this, returnMsg));
-				} else if ((pieceMsg.getBlockOffset() + Peer.BLOCK_LENGTH) == this.pieceLength) {
-					// Write the last block of piece
+				} else if ((pieceMsg.getBlockOffset() + BLOCK_LENGTH + this.lastBlockLength) == this.pieceLength) {
+					// Write the second to last block of piece
 					System.arraycopy(pieceMsg.getBlock(), 0, this.piece,
 							this.blockOffset, Peer.BLOCK_LENGTH);
-					// Queue the full piece
-					final PieceMessage returnMsg = new PieceMessage(
-							this.pieceIndex, 0, this.piece);
-					this.tasks.put(new MessageTask(this, returnMsg));
+					RequestMessage requestMsg;
+					
+					// Request another piece
+					this.blockOffset = this.blockOffset + Peer.BLOCK_LENGTH;
+					requestMsg = new RequestMessage(this.pieceIndex,
+							this.blockOffset, this.lastBlockLength);
+					this.sendMessage(requestMsg);
 				} else {
 					// Temporarily store the block
 					System.arraycopy(pieceMsg.getBlock(), 0, this.piece,
 							this.blockOffset, Peer.BLOCK_LENGTH);
 					RequestMessage requestMsg;
-					if ((this.blockOffset + Peer.BLOCK_LENGTH) > this.pieceLength) {
-						// Request the last piece
-						this.blockOffset = this.blockOffset
-								+ this.lastBlockLength;
-						requestMsg = new RequestMessage(this.pieceIndex,
-								this.blockOffset, this.lastBlockLength);
-					} else {
-						// Request another piece
-						this.blockOffset = this.blockOffset + Peer.BLOCK_LENGTH;
-						requestMsg = new RequestMessage(this.pieceIndex,
-								this.blockOffset, Peer.BLOCK_LENGTH);
-					}
+
+					// Request another piece
+					this.blockOffset = this.blockOffset + Peer.BLOCK_LENGTH;
+					requestMsg = new RequestMessage(this.pieceIndex,
+							this.blockOffset, Peer.BLOCK_LENGTH);
 					this.sendMessage(requestMsg);
 				}
 			}
